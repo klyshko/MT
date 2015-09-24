@@ -53,7 +53,7 @@
 
 //repulsive potential
 #define REP_H 320
-#define REP_R 24
+#define REP_R 32
 //assembly_mode
 #define PAIR_CUTOFF 2.0
 
