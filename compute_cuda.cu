@@ -513,7 +513,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	}
 }
 
-__global__ void pairs_kernel(const Coord* d_r, Topology* topGPU){
+__global__ void pairs_kernel(const Coord* d_r){
 	const int p = blockIdx.x*blockDim.x + threadIdx.x;
 	const int i = p % c_par.Ntot;
 	const int traj = p/c_par.Ntot;
@@ -527,10 +527,10 @@ __global__ void pairs_kernel(const Coord* d_r, Topology* topGPU){
     real R_MON;
 
     if(i < c_par.Ntot && traj < c_par.Ntr){
-    	topGPU->lateral[2*i] = LARGENUMBER;
-	    topGPU->lateral[2*i + 1] = LARGENUMBER;
+    	c_top.lateral[2*i] = LARGENUMBER;
+	    c_top.lateral[2*i + 1] = LARGENUMBER;
 		
-		if(topGPU->harmonic[i] < 0)
+		if(c_top.harmonic[i] < 0)
 	        R_MON = -r_mon;
 	    else
 	        R_MON = r_mon;
@@ -549,7 +549,7 @@ __global__ void pairs_kernel(const Coord* d_r, Topology* topGPU){
 	    real curMinDist = PAIR_CUTOFF;
 
 	    for(int j = 0; j < c_par.Ntot; j++){
-	        if(topGPU->harmonic[i] * topGPU->harmonic[j] <= 0){
+	        if(c_top.harmonic[i] * c_top.harmonic[j] <= 0){
 	            rj = d_r[j];
 	            cos_fij = cosf(rj.fi);
 	            sin_fij = sinf(rj.fi);
@@ -573,12 +573,12 @@ __global__ void pairs_kernel(const Coord* d_r, Topology* topGPU){
 	            if(dr < curMinDist)
 	            {
 	                curMinDist = dr;
-	                if(topGPU->harmonic[i] < 0)
-	                    topGPU->longitudinal[i] = j;
+	                if(c_top.harmonic[i] < 0)
+	                    c_top.longitudinal[i] = j;
 	                else
-	                    topGPU->longitudinal[i] = -j;
+	                    c_top.longitudinal[i] = -j;
 
-	                topGPU->longitudinalCount[i] = 1;
+	                c_top.longitudinalCount[i] = 1;
 	            }
 	        }
 	    }
@@ -631,13 +631,13 @@ __global__ void pairs_kernel(const Coord* d_r, Topology* topGPU){
 	                if (ind == 0) {
 	                    if (dr < curMinDistArr[0]) {
 	                        curMinDistArr[0] = dr;
-	                        topGPU->lateral[2 * i + 0] = -j;
+	                        c_top.lateral[2 * i + 0] = -j;
 	                        latFlag[0] = 1; //
 	                    }
 	                } else {
-	                    if ((dr < curMinDistArr[1]) && (topGPU->lateral[2 * i + 0] + j != 0)) {
+	                    if ((dr < curMinDistArr[1]) && (c_top.lateral[2 * i + 0] + j != 0)) {
 	                        curMinDistArr[1] = dr;
-	                        topGPU->lateral[2 * i + 1] = j;
+	                        c_top.lateral[2 * i + 1] = j;
 	                        latFlag[1] = 1; //
 	                    }
 	                }
@@ -1031,8 +1031,8 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	checkCUDAError("montype copy");
 
 	//const memory
-	//cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
-	//checkCUDAError("copy of topGPU to const memory");
+	cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
+	checkCUDAError("copy of topGPU to const memory");
 
 	cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
 	checkCUDAError("copy parameters");
@@ -1050,6 +1050,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
 			checkCUDAError("copy d_r to r to update pairs");
+			
 			UpdateLJPairs();
 
 			cudaFree(topGPU.LJ);
@@ -1067,7 +1068,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	#if defined(ASSEMBLY)
 
             UpdatePairs();
-            pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, &topGPU);
+            pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
             printf("pairs updated\n");
             /*
             cudaMemcpy(topGPU.longitudinalCount, top.longitudinalCount, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
@@ -1076,8 +1077,8 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
         	cudaMemcpy(topGPU.lateral, top.lateral, par.Ntot*topGPU.maxLateralPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
         	*/
 	#endif
-			cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
-			checkCUDAError("copy topGPU to const memory");
+			//cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
+			//checkCUDAError("copy topGPU to const memory");
 		}
 #endif
 
