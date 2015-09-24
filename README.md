@@ -1,1 +1,2 @@
-# MT\ Program that implements assembling and disassembling of microtubules
+# MT
+ Program that implements assembling and disassembling of microtubules
