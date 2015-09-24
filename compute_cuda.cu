@@ -527,6 +527,7 @@ __global__ void pairs_kernel(const Coord* d_r){
     real R_MON;
 
     if(i < c_par.Ntot && traj < c_par.Ntr){
+
     	c_top.lateral[2*i] = LARGENUMBER;
 	    c_top.lateral[2*i + 1] = LARGENUMBER;
 		
@@ -660,8 +661,8 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 	int i,j;
 	Coord ri, rj;
 	real dr, dr2;
-	Energies en = (Energies){0,0,0,0,0,0,0};
-	real U_lat = 0.0, U_long = 0.0, U_harm = 0.0, U_fi = 0.0, U_psi = 0.0, U_teta = 0.0, U_lj = 0;
+	Energies en; //= (Energies){0,0,0,0,0,0,0};
+	real U_lat = 0.0, U_long = 0.0, U_harm = 0.0, U_fi = 0.0, U_psi = 0.0, U_teta = 0.0, U_lj = 0.0;
 
 	real xp1 = xp1_def;
 	real yp1 = yp1_def;
@@ -865,18 +866,19 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
             }
         }
 #endif       
-	}
+	
+        //U = U_harm + U_long + U_lat + U_lj + U_psi + U_fi + U_teta;
+		en.U_harm = U_harm / 2;
+		en.U_long = U_long / 2;
+		en.U_lat = U_lat / 2;
+		en.U_lj = U_lj / 2;
+		en.U_psi = U_psi / 2;
+		en.U_fi = U_fi / 2;
+		en.U_teta = U_teta / 2;
 
-	//U = U_harm + U_long + U_lat + U_lj + U_psi + U_fi + U_teta;
-	en.U_harm = U_harm / 2;
-	en.U_long = U_long / 2;
-	en.U_lat = U_lat / 2;
-	en.U_lj = U_lj / 2;
-	en.U_psi = U_psi / 2;
-	en.U_fi = U_fi / 2;
-	en.U_teta = U_teta / 2;
+		d_energies[p] = en;
 
-	d_energies[p] = en;
+	}	
 
 }
 
@@ -1050,7 +1052,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
 			checkCUDAError("copy d_r to r to update pairs");
-			
+
 			UpdateLJPairs();
 
 			cudaFree(topGPU.LJ);
