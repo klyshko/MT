@@ -107,7 +107,7 @@ int main(int argc, char *argv[]){
 
 #if defined(ASSEMBLY)
     AssemblyInit();
-    UpdatePairs();
+    //UpdatePairs();
 #endif
 
 #ifdef OUTPUT_EN

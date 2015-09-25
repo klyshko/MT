@@ -976,7 +976,6 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 	cudaMalloc((void**)&d_r, par.Ntot*par.Ntr*sizeof(Coord));
 	checkCUDAError("d_r allocation");
-
 	cudaMalloc((void**)&d_f, par.Ntot*par.Ntr*sizeof(Coord));
 	checkCUDAError("d_f allocation");
 
@@ -992,17 +991,8 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 	cudaMemcpy(d_f, f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
 	checkCUDAError("copy_forces");
-
 	cudaMemcpy(d_r, r, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
 	checkCUDAError("from r to d_r copy");
-
-	
-#ifdef OUTPUT_EN
-	//energies initializing
-	Energies* d_energies;
-	cudaMalloc((void**)&d_energies, par.Ntot*par.Ntr * sizeof(Energies));
-	checkCUDAError("d_energies allocation");
-#endif
 
 	topGPU.maxHarmonicPerMonomer = top.maxHarmonicPerMonomer;
 	topGPU.maxLongitudinalPerMonomer = top.maxLongitudinalPerMonomer;
@@ -1014,26 +1004,12 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	checkCUDAError("topGPU.longitudinalCount allocation");
 	cudaMalloc((void**)&(topGPU.lateralCount), par.Ntot*sizeof(int));
 	checkCUDAError("topGPU.lateralCount allocation");
-
-	cudaMalloc((void**)&(topGPU.fixed), par.Ntot*sizeof(bool));
-	checkCUDAError("topGPU.fixed allocation");
 	cudaMalloc((void**)&(topGPU.harmonic), par.Ntot*sizeof(int)*topGPU.maxHarmonicPerMonomer);
 	checkCUDAError("harmonic allocation");
 	cudaMalloc((void**)&(topGPU.longitudinal), par.Ntot*sizeof(int)*topGPU.maxLongitudinalPerMonomer);
 	checkCUDAError("long allocation");
 	cudaMalloc((void**)&(topGPU.lateral), par.Ntot*sizeof(int)*topGPU.maxLateralPerMonomer);
 	checkCUDAError("lateral allocation");
-
-#ifdef LJ_on
-	topGPU.maxLJPerMonomer = 256;  ///I hope it will be enough       =top.maxLJPerMonomer;
-	cudaMalloc((void**)&(topGPU.LJCount), par.Ntot*sizeof(int)*par.Ntr);
-	checkCUDAError("lj_count allocation");
-	cudaMalloc((void**)&(topGPU.LJ), par.Ntot*sizeof(int)*par.Ntr*topGPU.maxLJPerMonomer);
-	checkCUDAError("lj allocation");
-#endif
-
-	cudaMalloc((void**)&(topGPU.mon_type), par.Ntot*sizeof(int));
-	checkCUDAError("d_mon_type allocation");
 
 	cudaMemcpy(topGPU.harmonic, top.harmonic, par.Ntot*topGPU.maxHarmonicPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("harmonic copy");
@@ -1047,7 +1023,22 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	checkCUDAError("long count copy");
 	cudaMemcpy(topGPU.lateralCount, top.lateralCount, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("lat count copy");
+
+	cudaMalloc((void**)&(topGPU.fixed), par.Ntot*sizeof(bool));
+	checkCUDAError("topGPU.fixed allocation");
+	cudaMalloc((void**)&(topGPU.mon_type), par.Ntot*sizeof(int));
+	checkCUDAError("d_mon_type allocation");
+	cudaMemcpy(topGPU.fixed, top.fixed, par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
+	checkCUDAError("fixed copy");
+	cudaMemcpy(topGPU.mon_type, top.mon_type, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+	checkCUDAError("montype copy");
+
 #ifdef LJ_on
+	topGPU.maxLJPerMonomer = 256;  ///I hope it will be enough       =top.maxLJPerMonomer;
+	cudaMalloc((void**)&(topGPU.LJCount), par.Ntot*sizeof(int)*par.Ntr);
+	checkCUDAError("lj_count allocation");
+	cudaMalloc((void**)&(topGPU.LJ), par.Ntot*sizeof(int)*par.Ntr*topGPU.maxLJPerMonomer);
+	checkCUDAError("lj allocation");
 	/*
 	cudaMemcpy(topGPU.LJCount, top.LJCount, par.Ntot*par.Ntr*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("lj count copy");
@@ -1055,69 +1046,39 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	checkCUDAError("lj copy");
 	*/
 #endif
-
-	cudaMemcpy(topGPU.fixed, top.fixed, par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
-	checkCUDAError("fixed copy");
-	cudaMemcpy(topGPU.mon_type, top.mon_type, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
-	checkCUDAError("montype copy");
-
 	//const memory
 	cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
 	checkCUDAError("copy of topGPU pointer to const memory");
 
 	cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
 	checkCUDAError("copy parameters");
+
+#ifdef OUTPUT_EN     //energies initializing
+	Energies* d_energies;
+	cudaMalloc((void**)&d_energies, par.Ntot*par.Ntr * sizeof(Energies));
+	checkCUDAError("d_energies allocation");
+#endif
 	
-	// RNG
 	initRand(par.rseed, 2*par.Ntot*par.Ntr);
-	
-	/*
-	 * -----------------------------Kernel calls
-	*/
+																
+/*
+|	--------   KERNEL CALLS
+*/																
 	for(long long int step = 0; step < par.steps; step++){
 
 #ifdef LJ_on
 		if(step % par.ljpairsupdatefreq == 0){ //pairs update frequency 
 
-			//cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
-			//checkCUDAError("copy d_r to r to update pairs");
-
-
 			LJ_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
-			//UpdateLJPairs();
-			/*
-			cudaFree(topGPU.LJ);
-			checkCUDAError("freeing topgpu_lj");
-
-			cudaMalloc((void**)&(topGPU.LJ), par.Ntot*sizeof(int)*par.Ntr*top.maxLJPerMonomer);
-			checkCUDAError("lj allocation");
-
-			cudaMemcpy(topGPU.LJCount, top.LJCount, par.Ntot*par.Ntr*sizeof(int), cudaMemcpyHostToDevice);
-			checkCUDAError("lj count memcpy");
-
-			cudaMemcpy(topGPU.LJ, top.LJ, par.Ntot*par.Ntr*top.maxLJPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
-			checkCUDAError("lj memcpy");
-			*/
-
-	#if defined(ASSEMBLY)
-
-            //UpdatePairs();
+			checkCUDAError("lj_kernel");
+#if defined(ASSEMBLY)
             pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
+            checkCUDAError("pairs_kernel");
             printf("pairs updated\n");
-            /*
-            cudaMemcpy(topGPU.longitudinalCount, top.longitudinalCount, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
-            cudaMemcpy(topGPU.lateralCount, top.lateralCount, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
-        	cudaMemcpy(topGPU.longitudinal, top.longitudinal, par.Ntot*topGPU.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
-        	cudaMemcpy(topGPU.lateral, top.lateral, par.Ntot*topGPU.maxLateralPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
-        	*/
-	#endif
-			//cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
-			//checkCUDAError("copy topGPU to const memory");
+#endif
 		}
 #endif
-
 		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
-
 #ifdef OUTPUT_EN
             energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
             checkCUDAError("energy_kernel");
@@ -1127,7 +1088,6 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
 			checkCUDAError("r update copy");
 			update(step);
-
 		}
 
 		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
@@ -1147,6 +1107,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	cudaFree(topGPU.longitudinalCount);
 	cudaFree(topGPU.lateralCount);
 	cudaFree(topGPU.fixed);
+	cudaFree(topGPU.mon_type);
 	cudaFree(topGPU.harmonic);
 	cudaFree(topGPU.longitudinal);
 	cudaFree(topGPU.lateral);
@@ -1157,6 +1118,5 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 #ifdef OUTPUT_EN
 	cudaFree(d_energies);
 #endif
-	cudaFree(topGPU.mon_type);
 	checkCUDAError("cleanup");
 }

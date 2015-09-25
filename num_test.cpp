@@ -244,7 +244,7 @@ double U(Coord* r, Parameters &par, Topology &top){
     en.U_fi = U_fi/2;
     en.U_teta = U_teta/2;
     en.U_lj = U_lj/2;
-    OutputEn(en);
+    //OutputEn(en);
 
 
     for (int p = 0; p < par.Ntot; p++){
