@@ -416,8 +416,8 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
             }
     }
     top.harmonicCount = (int*)calloc(par.Ntot, sizeof(int));
-    top.longitudinalCount = (int*)calloc(par.Ntot, sizeof(int));
-    top.lateralCount = (int*)calloc(par.Ntot, sizeof(int));
+    top.longitudinalCount = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
+    top.lateralCount = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
     
     // Covalent bonds map
     for(i = 0; i < par.Ntot; i++) top.harmonicCount[i] = 0;
@@ -452,35 +452,58 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
     }
 
     // Longitudal exponential
-    for(i = 0; i < par.Ntot; i++) top.longitudinalCount[i] = 0;
-    for(i = 0; i < par.Ntot; i++){
-        for(j = 0; j < par.Ntot; j++){
-            if( (pdb.atoms[i].resid == (pdb.atoms[j].resid + 1)) &&
-                (pdb.atoms[i].chain == pdb.atoms[j].chain) &&
-                (pdb.atoms[i].id == (pdb.atoms[j].id + 1))){
-                top.longitudinalCount[i]++;
-                if(top.maxLongitudinalPerMonomer < top.longitudinalCount[i])
-                        top.maxLongitudinalPerMonomer = top.longitudinalCount[i];
+    for(i = 0; i < par.Ntot * par.Ntr; i++) top.longitudinalCount[i] = 0;
+
+    for (int traj = 0; traj < par.Ntr; traj++){
+        for(i = 0; i < par.Ntot; i++){
+            for(j = 0; j < par.Ntot; j++){
+                if( (pdb.atoms[i].resid == (pdb.atoms[j].resid + 1)) &&
+                    (pdb.atoms[i].chain == pdb.atoms[j].chain) &&
+                    (pdb.atoms[i].id == (pdb.atoms[j].id + 1))){
+                    top.longitudinalCount[i + par.Ntot * traj]++;
+                    if(top.maxLongitudinalPerMonomer < top.longitudinalCount[i + par.Ntot * traj])
+                            top.maxLongitudinalPerMonomer = top.longitudinalCount[i + par.Ntot * traj];
+                }
             }
         }
     }
-    top.longitudinal = (int*)calloc(top.maxLongitudinalPerMonomer*par.Ntot, sizeof(int));
-    for(i = 0; i < par.Ntot; i++) top.longitudinalCount[i] = 0;
-    for(i = 0; i < par.Ntot; i++){
-        for(j = 0; j < par.Ntot; j++){
-            if(abs(pdb.atoms[i].resid - pdb.atoms[j].resid) == 1 &&
-                pdb.atoms[i].chain == pdb.atoms[j].chain &&
-                abs(pdb.atoms[i].id -  pdb.atoms[j].id) == 1){
-                    if(pdb.atoms[i].id > pdb.atoms[j].id){
-                        top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = j; // << BUG: indexation
-                    }
-                    else{
-                        top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = -j; /* BUG: same here */
-                    }
-                top.longitudinalCount[i]++;
+    top.longitudinal = (int*)calloc(top.maxLongitudinalPerMonomer * par.Ntot * par.Ntr, sizeof(int));
+    
+    for(i = 0; i < par.Ntot * par.Ntr; i++) top.longitudinalCount[i] = 0;
+
+    for(int traj = 0; traj < par.Ntr; traj++){
+        for(i = 0; i < par.Ntot; i++){
+            for(j = 0; j < par.Ntot; j++){
+                if(abs(pdb.atoms[i].resid - pdb.atoms[j].resid) == 1 &&
+                    pdb.atoms[i].chain == pdb.atoms[j].chain &&
+                    abs(pdb.atoms[i].id -  pdb.atoms[j].id) == 1){
+                        if(pdb.atoms[i].id > pdb.atoms[j].id){
+                            top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = j; // << BUG: indexation
+                        }
+                        else{
+                            top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = -j; /* BUG: same here */
+                        }
+                    top.longitudinalCount[i]++;
+                }
             }
         }
+        
     }
+        for(i = 0; i < par.Ntot; i++){
+            for(j = 0; j < par.Ntot; j++){
+                if(abs(pdb.atoms[i].resid - pdb.atoms[j].resid) == 1 &&
+                    pdb.atoms[i].chain == pdb.atoms[j].chain &&
+                    abs(pdb.atoms[i].id -  pdb.atoms[j].id) == 1){
+                        if(pdb.atoms[i].id > pdb.atoms[j].id){
+                            top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = j; // << BUG: indexation
+                        }
+                        else{
+                            top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = -j; /* BUG: same here */
+                        }
+                    top.longitudinalCount[i]++;
+                }
+            }
+        }
     
     // Lateral exponential
     for(i = 0; i < par.Ntot; i++) top.lateralCount[i] = 0;
