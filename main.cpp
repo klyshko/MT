@@ -478,32 +478,19 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
                     pdb.atoms[i].chain == pdb.atoms[j].chain &&
                     abs(pdb.atoms[i].id -  pdb.atoms[j].id) == 1){
                         if(pdb.atoms[i].id > pdb.atoms[j].id){
-                            top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = j; // << BUG: indexation
+                            top.longitudinal[top.maxLongitudinalPerMonomer * par.Ntot * traj + i * top.maxLongitudinalPerMonomer + top.longitudinalCount[i]] = j;
+                            //top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = j; // << BUG: indexation
                         }
                         else{
-                            top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = -j; /* BUG: same here */
+                            top.longitudinal[top.maxLongitudinalPerMonomer * par.Ntot * traj + i * top.maxLongitudinalPerMonomer + top.longitudinalCount[i]] = -j;
+                            //top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = -j; /* BUG: same here */
                         }
-                    top.longitudinalCount[i]++;
+                    top.longitudinalCount[i + par.Ntot * traj]++;
                 }
             }
         }
-        
+
     }
-        for(i = 0; i < par.Ntot; i++){
-            for(j = 0; j < par.Ntot; j++){
-                if(abs(pdb.atoms[i].resid - pdb.atoms[j].resid) == 1 &&
-                    pdb.atoms[i].chain == pdb.atoms[j].chain &&
-                    abs(pdb.atoms[i].id -  pdb.atoms[j].id) == 1){
-                        if(pdb.atoms[i].id > pdb.atoms[j].id){
-                            top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = j; // << BUG: indexation
-                        }
-                        else{
-                            top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = -j; /* BUG: same here */
-                        }
-                    top.longitudinalCount[i]++;
-                }
-            }
-        }
     
     // Lateral exponential
     for(i = 0; i < par.Ntot; i++) top.lateralCount[i] = 0;

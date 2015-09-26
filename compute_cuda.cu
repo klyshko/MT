@@ -1074,7 +1074,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 #if defined(ASSEMBLY)
             pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
             checkCUDAError("pairs_kernel");
-            printf("pairs updated\n");
+            //printf("pairs updated\n");
 #endif
 		}
 #endif
