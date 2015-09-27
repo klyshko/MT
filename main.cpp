@@ -115,10 +115,6 @@ int main(int argc, char *argv[]){
 #endif
 
     compute(r, f, par, top, energies);
-//#else
-  //  num_test(r, f, par, top);
-//#endif
-
     saveCoordPDB("result_xyz.pdb", "result_ang.pdb");
     
 #ifdef USE_MPI
@@ -493,7 +489,8 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
     }
     
     // Lateral exponential
-    for(i = 0; i < par.Ntot; i++) top.lateralCount[i] = 0;
+    for(i = 0; i < par.Ntot * par.Ntr; i++) top.lateralCount[i] = 0;
+    
     real dr, xi, xj, yi, yj, zi, zj;
     real cos_fii, cos_fij, sin_fii, sin_fij,
           cos_psii, cos_psij, sin_psii, sin_psij,
@@ -504,49 +501,120 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
     real xp2 = xp2_def;
     real yp2 = yp2_def;
     real zp2 = zp2_def;
-    for(i = 0; i < par.Ntot; i++){
-        xi = r[i].x;    
-        yi = r[i].y;    
-        zi = r[i].z;
-        sin_fii = sinf(r[i].fi);
-        cos_fii = cosf(r[i].fi);
-        sin_psii = sinf(r[i].psi);
-        cos_psii = cosf(r[i].psi);      
-        sin_thetai = sinf(r[i].theta);
-        cos_thetai = cosf(r[i].theta);  
-        for(j = 0; j < par.Ntot; j++){
-            xj = r[j].x;    
-            yj = r[j].y;    
-            zj = r[j].z;
-            sin_fij = sinf(r[j].fi);
-            cos_fij = cosf(r[j].fi);
-            sin_psij = sinf(r[j].psi);
-            cos_psij = cosf(r[j].psi);      
-            sin_thetaj = sinf(r[j].theta);
-            cos_thetaj = cosf(r[j].theta);  
-            for(int ind=0; ind < 2; ind++)
-            {
-                if(ind == 0)
-                {
-                    xp1 = xp2_def;
-                    yp1 = yp2_def;
-                    zp1 = zp2_def;
-                    xp2 = xp1_def;
-                    yp2 = yp1_def;
-                    zp2 = zp1_def;
-                }
-                else
-                {
-                    xp1 = xp1_def;
-                    yp1 = yp1_def;
-                    zp1 = zp1_def;
-                    xp2 = xp2_def;
-                    yp2 = yp2_def;
-                    zp2 = zp2_def;
-                }
+    for(int traj = 0; traj < par.Ntr; traj++){
 
+        for(i = 0; i < par.Ntot; i++){
+            xi = r[i].x;    
+            yi = r[i].y;    
+            zi = r[i].z;
+            sin_fii = sinf(r[i].fi);
+            cos_fii = cosf(r[i].fi);
+            sin_psii = sinf(r[i].psi);
+            cos_psii = cosf(r[i].psi);      
+            sin_thetai = sinf(r[i].theta);
+            cos_thetai = cosf(r[i].theta);  
+            for(j = 0; j < par.Ntot; j++){
+                xj = r[j].x;    
+                yj = r[j].y;    
+                zj = r[j].z;
+                sin_fij = sinf(r[j].fi);
+                cos_fij = cosf(r[j].fi);
+                sin_psij = sinf(r[j].psi);
+                cos_psij = cosf(r[j].psi);      
+                sin_thetaj = sinf(r[j].theta);
+                cos_thetaj = cosf(r[j].theta);  
+                for(int ind = 0; ind < 2; ind++)
+                {
+                    if(ind == 0)
+                    {
+                        xp1 = xp2_def;
+                        yp1 = yp2_def;
+                        zp1 = zp2_def;
+                        xp2 = xp1_def;
+                        yp2 = yp1_def;
+                        zp2 = zp1_def;
+                    }
+                    else
+                    {
+                        xp1 = xp1_def;
+                        yp1 = yp1_def;
+                        zp1 = zp1_def;
+                        xp2 = xp2_def;
+                        yp2 = yp2_def;
+                        zp2 = zp2_def;
+                    }
+
+                        
+                    dr = sqrtf(pow(zi - zj + zp2 * cos_fii * cos_thetai -
+                        zp1 * cos_fij * cos_thetaj + yp2 * cos_thetai * sin_fii -
+                        yp1 * cos_thetaj * sin_fij - xp2 * sin_thetai + xp1 * sin_thetaj,2) +
+                        pow(xi - xj - yp2 * cos_fii * sin_psii + zp2 * sin_fii * sin_psii +
+                        yp1 * cos_fij * sin_psij - zp1 * sin_fij * sin_psij +
+                        cos_psii * (xp2 * cos_thetai + zp2 * cos_fii * sin_thetai +
+                        yp2 * sin_fii * sin_thetai) - cos_psij * (xp1 * cos_thetaj + zp1 * cos_fij * sin_thetaj +
+                        yp1 * sin_fij * sin_thetaj),2) + pow(yi - yj - zp2 * cos_psii * sin_fii + zp1 * cos_psij * sin_fij +
+                        xp2 * cos_thetai * sin_psii - xp1 * cos_thetaj * sin_psij + yp2 * sin_fii * sin_psii * sin_thetai +
+                        cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai) -
+                        yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
+                        zp1 * sin_psij * sin_thetaj),2));
                     
-                dr = sqrtf(pow(zi - zj + zp2 * cos_fii * cos_thetai -
+                    if(dr < r_mon){
+                        top.lateralCount[i + traj * par.Ntot]++;
+                        if(top.maxLateralPerMonomer < top.lateralCount[i + traj * par.Ntot])
+                                top.maxLateralPerMonomer = top.lateralCount[i + traj * par.Ntot];
+                    }
+                }
+            }   
+        }
+    }
+    
+    top.lateral = (int*)calloc(top.maxLateralPerMonomer * par.Ntot * par.Ntr, sizeof(int));
+    for(i = 0; i < par.Ntot * par.Ntr; i++) top.lateralCount[i] = 0;
+
+    for(int traj = 0; traj < par.Ntr; traj++){
+        for(i = 0; i < par.Ntot; i++){
+            xi = r[i].x;    
+            yi = r[i].y;    
+            zi = r[i].z;
+            sin_fii = sinf(r[i].fi);
+            cos_fii = cosf(r[i].fi);
+            sin_psii = sinf(r[i].psi);
+            cos_psii = cosf(r[i].psi);      
+            sin_thetai = sinf(r[i].theta);
+            cos_thetai = cosf(r[i].theta);  
+
+            for(j = 0; j < par.Ntot; j++){
+                xj = r[j].x;    
+                yj = r[j].y;    
+                zj = r[j].z;
+                sin_fij = sinf(r[j].fi);
+                cos_fij = cosf(r[j].fi);
+                sin_psij = sinf(r[j].psi);
+                cos_psij = cosf(r[j].psi);      
+                sin_thetaj = sinf(r[j].theta);
+                cos_thetaj = cosf(r[j].theta);  
+                for(int ind = 0; ind < 2; ind++)
+                {   
+                    if(ind == 0)
+                    {
+                        xp1 = xp2_def;
+                        yp1 = yp2_def;
+                        zp1 = zp2_def;
+                        xp2 = xp1_def;
+                        yp2 = yp1_def;
+                        zp2 = zp1_def;
+                    }
+                    else
+                    {
+                        xp1 = xp1_def;
+                        yp1 = yp1_def;
+                        zp1 = zp1_def;
+                        xp2 = xp2_def;
+                        yp2 = yp2_def;
+                        zp2 = zp2_def;
+                    }
+
+                    dr = sqrtf(pow(zi - zj + zp2 * cos_fii * cos_thetai -
                     zp1 * cos_fij * cos_thetaj + yp2 * cos_thetai * sin_fii -
                     yp1 * cos_thetaj * sin_fij - xp2 * sin_thetai + xp1 * sin_thetaj,2) +
                     pow(xi - xj - yp2 * cos_fii * sin_psii + zp2 * sin_fii * sin_psii +
@@ -558,104 +626,27 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
                     cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai) -
                     yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
                     zp1 * sin_psij * sin_thetaj),2));
-        /*      if(dr < 10){
-                    char nitro = 'N';
-                    printf("%-*c%*f%*f%*f\n",16,nitro,16,
-                    xi - yp2 * cos_fii * sin_psii + zp2 * sin_fii * sin_psii + cos_psii * (xp2 * cos_thetai + zp2 * cos_fii * sin_thetai + yp2 * sin_fii * sin_thetai),
-                    16,
-                    yi - zp2 * cos_psii * sin_fii + xp2 * cos_thetai * sin_psii + yp2 * sin_fii * sin_psii * sin_thetai + cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai),
-                    16,
-                    zi + zp2 * cos_fii * cos_thetai + yp2 * cos_thetai * sin_fii - xp2 * sin_thetai
-                    );
-        //          printf("%f %f %f\n", xp2,yp2,zp2);
-
-                }*/
-                if(dr < 1*r_mon){
-                    top.lateralCount[i]++;
-                    if(top.maxLateralPerMonomer < top.lateralCount[i])
-                            top.maxLateralPerMonomer = top.lateralCount[i];
-                }
-            }
-        }   
-    }
-    top.lateral = (int*)calloc(top.maxLateralPerMonomer*par.Ntot, sizeof(int));
-    for(i = 0; i < par.Ntot; i++) top.lateralCount[i] = 0;
-    for(i = 0; i < par.Ntot; i++){
-        xi = r[i].x;    
-        yi = r[i].y;    
-        zi = r[i].z;
-        sin_fii = sinf(r[i].fi);
-        cos_fii = cosf(r[i].fi);
-        sin_psii = sinf(r[i].psi);
-        cos_psii = cosf(r[i].psi);      
-        sin_thetai = sinf(r[i].theta);
-        cos_thetai = cosf(r[i].theta);  
-
-        for(j = 0; j < par.Ntot; j++){
-            xj = r[j].x;    
-            yj = r[j].y;    
-            zj = r[j].z;
-            sin_fij = sinf(r[j].fi);
-            cos_fij = cosf(r[j].fi);
-            sin_psij = sinf(r[j].psi);
-            cos_psij = cosf(r[j].psi);      
-            sin_thetaj = sinf(r[j].theta);
-            cos_thetaj = cosf(r[j].theta);  
-            for(int ind=0; ind < 2; ind++)
-            {   
-                if(ind == 0)
-                {
-                    xp1 = xp2_def;
-                    yp1 = yp2_def;
-                    zp1 = zp2_def;
-                    xp2 = xp1_def;
-                    yp2 = yp1_def;
-                    zp2 = zp1_def;
-                }
-                else
-                {
-                    xp1 = xp1_def;
-                    yp1 = yp1_def;
-                    zp1 = zp1_def;
-                    xp2 = xp2_def;
-                    yp2 = yp2_def;
-                    zp2 = zp2_def;
-                }
-
-                dr = sqrtf(pow(zi - zj + zp2 * cos_fii * cos_thetai -
-                zp1 * cos_fij * cos_thetaj + yp2 * cos_thetai * sin_fii -
-                yp1 * cos_thetaj * sin_fij - xp2 * sin_thetai + xp1 * sin_thetaj,2) +
-                pow(xi - xj - yp2 * cos_fii * sin_psii + zp2 * sin_fii * sin_psii +
-                yp1 * cos_fij * sin_psij - zp1 * sin_fij * sin_psij +
-                cos_psii * (xp2 * cos_thetai + zp2 * cos_fii * sin_thetai +
-                yp2 * sin_fii * sin_thetai) - cos_psij * (xp1 * cos_thetaj + zp1 * cos_fij * sin_thetaj +
-                yp1 * sin_fij * sin_thetaj),2) + pow(yi - yj - zp2 * cos_psii * sin_fii + zp1 * cos_psij * sin_fij +
-                xp2 * cos_thetai * sin_psii - xp1 * cos_thetaj * sin_psij + yp2 * sin_fii * sin_psii * sin_thetai +
-                cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai) -
-                yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
-                zp1 * sin_psij * sin_thetaj),2));
-                if(dr < r_mon){
-                    if(ind == 1){
-                        top.lateral[top.maxLateralPerMonomer*i + top.lateralCount[i]] = j;
-                    }else{
-                        top.lateral[top.maxLateralPerMonomer*i + top.lateralCount[i]] = -j;
+                    if(dr < r_mon){
+                        if(ind == 1){
+                            top.lateral[top.maxLateralPerMonomer * par.Ntot * traj + i * top.maxLateralPerMonomer + top.lateralCount[i]] = j;
+                        }else{
+                            top.lateral[top.maxLateralPerMonomer * par.Ntot * traj + i * top.maxLateralPerMonomer + top.lateralCount[i]] = -j;
+                        }
+                        top.lateralCount[i + par.Ntot * traj]++;
                     }
-                    top.lateralCount[i]++;
                 }
             }
         }
     }
+    
     //todo initialising fixed atoms list
     top.fixed = (bool*)calloc(par.Ntot, sizeof(bool));
-    for(i=0; i < par.Ntot; i++){
+    for(i = 0; i < par.Ntot; i++){
             if( pdb.atoms[i].resid <= par.fix )
                     top.fixed[i] = true;
             else
                     top.fixed[i] = false;
     }
-#ifdef LJ_on
-    //UpdateLJPairs();
-#endif
     printf("done building topology without LJ.\n");
 }
 
@@ -709,7 +700,7 @@ void OutputAllEnergies(){
     fullEnergy.U_teta = 0;
     fullEnergy.U_lj = 0;
 
-    for (int i = 0; i < par.Ntot * par.Ntr; i++){
+    for (int i = 0; i < par.Ntot; i++){
         fullEnergy.U_harm += energies[i].U_harm;
         fullEnergy.U_long += energies[i].U_long;
         fullEnergy.U_lat += energies[i].U_lat;
@@ -747,7 +738,6 @@ void ReadFromDCD(Parameters par, Topology top, char* dcdfilename_xyz, char* dcdf
             r[i].psi   = dcd_ang.frame.Y[i];
             r[i].theta = dcd_ang.frame.Z[i];
         }
-       // U(r, par, top);
     }
 }
 
@@ -756,9 +746,9 @@ void AssemblyInit()
     free(top.lateral);
     free(top.longitudinal);
 
-    top.lateral = (int*)calloc(2*par.Ntot*par.Ntr, sizeof(int));
-    top.longitudinal = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
-    for(int i = 0; i < par.Ntot*par.Ntr; i++)
+    top.lateral = (int*)calloc(2 * par.Ntot * par.Ntr, sizeof(int));
+    top.longitudinal = (int*)calloc(par.Ntot * par.Ntr, sizeof(int));
+    for(int i = 0; i < par.Ntot * par.Ntr; i++)
     {
         top.longitudinalCount[i] = 0;
         top.lateralCount[i] = 2;

@@ -1000,28 +1000,28 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 	cudaMalloc((void**)&(topGPU.harmonicCount), par.Ntot*sizeof(int));
 	checkCUDAError("topGPU.harmonicCount allocation");
-	cudaMalloc((void**)&(topGPU.longitudinalCount), par.Ntot*sizeof(int));
+	cudaMalloc((void**)&(topGPU.longitudinalCount), par.Ntot*par.Ntr*sizeof(int));
 	checkCUDAError("topGPU.longitudinalCount allocation");
-	cudaMalloc((void**)&(topGPU.lateralCount), par.Ntot*sizeof(int));
+	cudaMalloc((void**)&(topGPU.lateralCount), par.Ntot*par.Ntr*sizeof(int));
 	checkCUDAError("topGPU.lateralCount allocation");
 	cudaMalloc((void**)&(topGPU.harmonic), par.Ntot*sizeof(int)*topGPU.maxHarmonicPerMonomer);
 	checkCUDAError("harmonic allocation");
-	cudaMalloc((void**)&(topGPU.longitudinal), par.Ntot*sizeof(int)*topGPU.maxLongitudinalPerMonomer);
+	cudaMalloc((void**)&(topGPU.longitudinal), par.Ntot*par.Ntr*sizeof(int)*topGPU.maxLongitudinalPerMonomer);
 	checkCUDAError("long allocation");
-	cudaMalloc((void**)&(topGPU.lateral), par.Ntot*sizeof(int)*topGPU.maxLateralPerMonomer);
+	cudaMalloc((void**)&(topGPU.lateral), par.Ntot*par.Ntr*sizeof(int)*topGPU.maxLateralPerMonomer);
 	checkCUDAError("lateral allocation");
 
 	cudaMemcpy(topGPU.harmonic, top.harmonic, par.Ntot*topGPU.maxHarmonicPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("harmonic copy");
-	cudaMemcpy(topGPU.longitudinal, top.longitudinal, par.Ntot*topGPU.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(topGPU.longitudinal, top.longitudinal, par.Ntot*par.Ntr*topGPU.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("long copy");
-	cudaMemcpy(topGPU.lateral, top.lateral, par.Ntot*topGPU.maxLateralPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(topGPU.lateral, top.lateral, par.Ntot*par.Ntr*topGPU.maxLateralPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("lateral copy");
 	cudaMemcpy(topGPU.harmonicCount, top.harmonicCount, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("harmonic count copy");
-	cudaMemcpy(topGPU.longitudinalCount, top.longitudinalCount, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(topGPU.longitudinalCount, top.longitudinalCount, par.Ntot*par.Ntr*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("long count copy");
-	cudaMemcpy(topGPU.lateralCount, top.lateralCount, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(topGPU.lateralCount, top.lateralCount, par.Ntot*par.Ntr*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("lat count copy");
 
 	cudaMalloc((void**)&(topGPU.fixed), par.Ntot*sizeof(bool));
