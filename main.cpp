@@ -58,7 +58,6 @@ int mpi_dev_cur, mpi_rank, mpi_size;
 void initParameters(int argc, char* argv[]);
 
 int main(int argc, char *argv[]){
-    printf("Start parsing...\n");
 #ifdef USE_MPI
     MPI::Init(argc, argv);
     mpi_rank = MPI::COMM_WORLD.Get_rank();
