@@ -644,7 +644,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 		xi = ri.x;
 		yi = ri.y;
 		zi = ri.z;
-
+		
 		for(int k = 0; k < c_top.harmonicCount[ind]; k++){
 			j = c_top.harmonic[c_top.maxHarmonicPerMonomer * ind + k];
 			if (j < 0){
@@ -807,9 +807,10 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
             U_lat += barr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr);
 #endif
 		}
-
+	
 #ifdef LJ_on
-        for(int k = 0; k < ind + traj * c_par.Ntot; k++){
+
+        for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
         	j = c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * traj + ind * c_top.maxLJPerMonomer + k];
 			rj = d_r[j + traj * c_par.Ntot];
             //rj = d_r[c_top.LJ[k * c_par.Ntr * c_par.Ntot + p]];
@@ -986,12 +987,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	checkCUDAError("lj_count allocation");
 	cudaMalloc((void**)&(topGPU.LJ), par.Ntot*sizeof(int)*par.Ntr*topGPU.maxLJPerMonomer);
 	checkCUDAError("lj allocation");
-	/*
-	cudaMemcpy(topGPU.LJCount, top.LJCount, par.Ntot*par.Ntr*sizeof(int), cudaMemcpyHostToDevice);
-	checkCUDAError("lj count copy");
-	cudaMemcpy(topGPU.LJ, top.LJ, par.Ntot*par.Ntr*topGPU.maxLJPerMonomer*sizeof(int), cudaMemcpyHostToDevice);
-	checkCUDAError("lj copy");
-	*/
+	
 #endif
 	//const memory
 	cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
