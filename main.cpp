@@ -28,6 +28,7 @@ void writeRestart(long long int step);
 void readRestart();
 void OutputEnergies(int index, int traj);
 void OutputAllEnergies();
+void OutputForces();
 
 extern void init(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
 extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
@@ -473,14 +474,14 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
                     pdb.atoms[i].chain == pdb.atoms[j].chain &&
                     abs(pdb.atoms[i].id -  pdb.atoms[j].id) == 1){
                         if(pdb.atoms[i].id > pdb.atoms[j].id){
-                            top.longitudinal[top.maxLongitudinalPerMonomer * par.Ntot * traj + i * top.maxLongitudinalPerMonomer + top.longitudinalCount[i]] = j;
+                            top.longitudinal[top.maxLongitudinalPerMonomer * par.Ntot * traj + i * top.maxLongitudinalPerMonomer + top.longitudinalCount[i + par.Ntot * traj]] = j;
                             //top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = j; // << BUG: indexation
                         }
                         else{
-                            top.longitudinal[top.maxLongitudinalPerMonomer * par.Ntot * traj + i * top.maxLongitudinalPerMonomer + top.longitudinalCount[i]] = -j;
+                            top.longitudinal[top.maxLongitudinalPerMonomer * par.Ntot * traj + i * top.maxLongitudinalPerMonomer + top.longitudinalCount[i + par.Ntot * traj]] = -j;
                             //top.longitudinal[top.maxLongitudinalPerMonomer*i + top.longitudinalCount[i]] = -j; /* BUG: same here */
                         }
-                    top.longitudinalCount[i + par.Ntot * traj]++;
+                        top.longitudinalCount[i + par.Ntot * traj]++;
                 }
             }
         }
@@ -627,9 +628,9 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
                     zp1 * sin_psij * sin_thetaj),2));
                     if(dr < r_mon){
                         if(ind == 1){
-                            top.lateral[top.maxLateralPerMonomer * par.Ntot * traj + i * top.maxLateralPerMonomer + top.lateralCount[i]] = j;
+                            top.lateral[top.maxLateralPerMonomer * par.Ntot * traj + i * top.maxLateralPerMonomer + top.lateralCount[i + par.Ntot * traj]] = j;
                         }else{
-                            top.lateral[top.maxLateralPerMonomer * par.Ntot * traj + i * top.maxLateralPerMonomer + top.lateralCount[i]] = -j;
+                            top.lateral[top.maxLateralPerMonomer * par.Ntot * traj + i * top.maxLateralPerMonomer + top.lateralCount[i + par.Ntot * traj]] = -j;
                         }
                         top.lateralCount[i + par.Ntot * traj]++;
                     }
@@ -709,6 +710,14 @@ void OutputAllEnergies(){
         fullEnergy.U_lj += energies[i].U_lj;
     }
     printf("ENERGIES harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", fullEnergy.U_harm, fullEnergy.U_long, fullEnergy.U_lat, fullEnergy.U_psi, fullEnergy.U_fi, fullEnergy.U_teta, fullEnergy.U_lj);
+}
+
+void OutputForces(){
+
+    for (int i = 0; i < par.Ntot; i++){
+        printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
+    }
+    
 }
 
 void ReadFromDCD(Parameters par, Topology top, char* dcdfilename_xyz, char* dcdfilename_ang)

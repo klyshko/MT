@@ -159,7 +159,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			fi.fi    += -c_par.C * gradfi;
 			fi.psi   += -c_par.C * gradpsi;
 			fi.theta += -c_par.C * gradtheta;
-
+		
 		
             if(dr < ANGLE_CUTOFF )
             {
@@ -178,15 +178,18 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
             
 		
 		}
-		/*
+		
 		for(int k = 0; k < c_top.longitudinalCount[ind + c_par.Ntot * traj]; k++){
 			j = c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + ind * c_top.maxLongitudinalPerMonomer + k];
-			if(j < 0){
+			if(j < 0 && ind != j){
 				R_MON = r_mon;
 				j *= -1;
 			}
-			else{
+			else if (j >= 0 && ind != j){
 				R_MON = -r_mon;
+			}
+			else {
+				return;
 			}
 			rj = d_r[j + traj*c_par.Ntot];
 			cos_fij = cosf(rj.fi);
@@ -251,13 +254,14 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 #if defined(BARR)
             dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr)/dr;
 #endif
-        
+        	/*
 			fi.x     += -dUdr*gradx;
 			fi.y     += -dUdr*grady;
 			fi.z     += -dUdr*gradz;
 			fi.fi    += -dUdr*gradfi;
 			fi.psi   += -dUdr*gradpsi;
 			fi.theta += -dUdr*gradtheta;
+			*/
 
             if(dr < ANGLE_CUTOFF)
             {
@@ -440,7 +444,6 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 		}
 		
-		*/
 
 #ifdef LJ_on
 		for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
@@ -459,9 +462,9 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 #endif
 
 #if defined(REPULSIVE)
-    if (ri.z < 0.0){
-        fi.z += 0.005 * fabs(ri.z);;
-    } else if (ri.z > REP_H / 2) {
+    if (ri.z < 0){
+        fi.z += 0.005 * fabs(ri.z + REP_H);
+    } else if (ri.z > REP_H /2) {
     	fi.z += -0.005 * fabs(ri.z - REP_H / 2);
     }
 
@@ -1069,6 +1072,9 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 #if defined (TEST_OPT) || defined (OUTPUT_FORCE)
 		cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
+		for (int i = 0; i < par.Ntot; i++){
+        	printf("Force[%d].x = %f, y = %f, z = %f, psi = %f, fi = %f, teta = %f\n", i, f[i].x, f[i].y, f[i].z, f[i].psi, f[i].fi, f[i].theta);
+    	}
 #endif
 
 		integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);

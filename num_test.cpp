@@ -2,7 +2,7 @@
 #include "output.h"
 #include "parameters.h"
 extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
-
+/*
 double barr(double a, double r, double w, double x)
 {
     return a*expf(-(x-r)*(x-r)/(2*w*w));
@@ -17,9 +17,9 @@ double morse_en(double D, double A, double x)
 {
     return D*(1-exp(-A*x))*(1-exp(-A*x)) - D;
 }
-
+*/
 double U(Coord* r, Parameters &par, Topology &top){
-	int ind, traj;
+	/*int ind, traj;
 	double cos_fii, cos_fij, sin_fii, sin_fij, 
 		  cos_psii, cos_psij, sin_psii, sin_psij,
 		  cos_thetai, cos_thetaj, sin_thetai, sin_thetaj;
@@ -255,12 +255,14 @@ double U(Coord* r, Parameters &par, Topology &top){
     	if (top.longitudinalCount[p] != 0)
     		printf("Longitudial[%d] -  %d, count = %d\n", p, top.longitudinal[p], top.longitudinalCount[p]);
     }
-	return U;
+    */
+	return 0.0;
 }
 
 
 
 void num_test(Coord* r, Coord* f, Parameters &par, Topology &top){
+	/*
 	Coord* r_old = (Coord*)calloc(par.Ntot, sizeof(Coord));
 	Coord* f_num = (Coord*)calloc(par.Ntot, sizeof(Coord));
 	Coord* f_sim = (Coord*)calloc(par.Ntot, sizeof(Coord));
@@ -401,5 +403,6 @@ void num_test(Coord* r, Coord* f, Parameters &par, Topology &top){
 		}
 	}
 	return;
+	*/
 }
 
