@@ -1,1 +1,0 @@
-void OutputEn(Energies en);

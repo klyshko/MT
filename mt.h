@@ -21,16 +21,17 @@
 #define R_MT 8.12f //nm  microtube radius
 #define r_mon 2.0f //nm	 monomer radius
 #define lj_cutoff (5.0)
- #define LARGENUMBER 999999
+#define LARGENUMBER 999999
 
 #define Turn 13 //Monomers per turn(2PI) 
-#if defined(TEST_OPT) || defined (OUTPUT_FORCE)
+#if defined (OUTPUT_FORCE)
 	#define real double
 	#define real4 double4
 #else
 	#define real float
 	#define real4 float4
 #endif
+
 #define KB 0.0019872041f //kcal/(mol*K)
 
 #define ANGLE_CUTOFF 1.0f

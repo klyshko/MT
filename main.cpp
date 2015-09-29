@@ -10,12 +10,11 @@
 #include "configreader.h"
 #include "timer.h"
 #include "wrapper.h"
-#include "num_test.h"
-#include "output.h"
+
 #ifdef USE_MPI
     #include <mpi.h>
 #endif 
-//void createMT();
+
 void read_PDB(const char* filename_xyz, const char* filename_ang);
 void saveCoordPDB(const char* pdbfilename_xyz, const char* pdbfilename_ang);
 void ReadFromDCD(Parameters par, Topology top, char* dcdfilename_xyz, char* dcdfilename_ang);
@@ -26,19 +25,11 @@ void UpdatePairs();
 void AssemblyInit();
 void writeRestart(long long int step);
 void readRestart();
-void OutputEnergies(int index, int traj);
+//void OutputEnergies(int index, int traj);
 void OutputAllEnergies();
 void OutputForces();
 
-extern void init(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
 extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
-#ifdef TEST_OPT
-extern void num_test(Coord* r, Coord* f, Parameters &par, Topology &top);
-#endif
-
-#ifdef TEST_ENERGY
-extern double U(Coord* r, Parameters &par, Topology &top);
-#endif
 
 Parameters par;
 Coord* r;
@@ -87,8 +78,6 @@ int main(int argc, char *argv[]){
 
     initParameters(argc, argv); // Init parameters of model from conf files
 
-    //init(r, f, par, top, energies);
-
 #if defined(READ_FROM_DCD)
     if(argc < 4)
     {
@@ -101,7 +90,6 @@ int main(int argc, char *argv[]){
     saveCoordPDB("result_xyz.pdb", "result_ang.pdb");
     exit(0);
 #endif
-
 
     initTimer();
 
@@ -143,11 +131,7 @@ void update(long long int step){
     printTime(step);
     printEstimatedTimeleft((real)step/(real)par.steps);
     saveCoordDCD();
- /*   
-#ifdef TEST_ENERGY
-    printf("%f\n", U(r, par, top));
-#endif
-*/
+
 #ifdef OUTPUT_FORCE
     Coord f_sum;
     f_sum.x = 0; f_sum.y = 0; f_sum.z = 0;
@@ -157,7 +141,7 @@ void update(long long int step){
         f_sum.y += f[i].y;
         f_sum.z += f[i].z;
     }
-    printf("SF %.16f\n", sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
+    printf("SF for 1st traj %.16f\n", sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
 #endif
 
 #ifdef OUTPUT_EN
@@ -184,30 +168,21 @@ void initParameters(int argc, char* argv[]){
 #endif
     par.dt = getFloatParameter(PARAMETER_TIMESTEP);
     par.rseed = getIntegerParameter(PARAMETER_RANDOM_SEED);
-#ifndef TEST_OPT
     par.steps = getLongIntegerParameter(PARAMETER_NUMSTEPS,-1);
-#else
-    par.steps = 1;
-#endif
-
-#ifdef T3LS
-    par.steps = 1;
-#endif
     par.stride = getLongIntegerParameter(PARAMETER_STRIDE,-1);
+
 #ifdef LJ_on
     par.ljpairscutoff = getFloatParameter(PARAMETER_LJPAIRSCUTOFF);
     par.ljpairsupdatefreq = getIntegerParameter(PARAMETER_LJPAIRSUPDATEFREQ);
 #endif
+
     getMaskedParameter(par.coordFilename_ang, PARAMETER_COORD_FILE_ANG);
     getMaskedParameter(par.coordFilename_xyz, PARAMETER_COORD_FILE_XYZ);
     getMaskedParameter(par.ffFilename, PARAMETER_FORCEFIELD_FILE);
     getMaskedParameter(par.condFilename, PARAMETER_CONDITIONS_FILE);
     par.fix = getIntegerParameter(PARAMETER_FIX,1);
-#ifndef TEST_OPT
     par.Ntr = getIntegerParameter(PARAMETER_RUNNUM,1);
-#else
-    par.Ntr = 1;
-#endif
+
     getMaskedParameter(par.restartkey, PARAMETER_RESTARTKEY);
 
     if(getYesNoParameter(PARAMETER_ISRESTART,0))
@@ -268,6 +243,7 @@ void initParameters(int argc, char* argv[]){
     par.D_long  = getFloatParameter(D_LONG);
     par.D_lat   = getFloatParameter(D_LAT);
 #else
+    /*
     par.C = getFloatParameter(PARAMETER_HARMONIC_C);
     par.A_long = getFloatParameter(PARAMETER_LONGITUDINAL_A);
     par.b_long = getFloatParameter(PARAMETER_LONGITUDINAL_B);
@@ -279,7 +255,11 @@ void initParameters(int argc, char* argv[]){
     par.c_lat = getFloatParameter(PARAMETER_LATERAL_C);
     par.r0_lat = getFloatParameter(PARAMETER_LATERAL_R_0);
     par.d_lat = getFloatParameter(PARAMETER_LATERAL_D);
+    */
+    printf("Specify potentials in ccmake .\n");
+    exit(0);
 #endif
+    
 #if defined(BARR)
     par.a_barr_long = getFloatParameter(A_BARR_LONG);
     par.r_barr_long = getFloatParameter(R_BARR_LONG);

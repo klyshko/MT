@@ -186,30 +186,6 @@ main.cpp.s:
 	$(MAKE) -f CMakeFiles/mt.dir/build.make CMakeFiles/mt.dir/main.cpp.s
 .PHONY : main.cpp.s
 
-num_test.o: num_test.cpp.o
-.PHONY : num_test.o
-
-# target to build an object file
-num_test.cpp.o:
-	$(MAKE) -f CMakeFiles/mt.dir/build.make CMakeFiles/mt.dir/num_test.cpp.o
-.PHONY : num_test.cpp.o
-
-num_test.i: num_test.cpp.i
-.PHONY : num_test.i
-
-# target to preprocess a source file
-num_test.cpp.i:
-	$(MAKE) -f CMakeFiles/mt.dir/build.make CMakeFiles/mt.dir/num_test.cpp.i
-.PHONY : num_test.cpp.i
-
-num_test.s: num_test.cpp.s
-.PHONY : num_test.s
-
-# target to generate assembly for a file
-num_test.cpp.s:
-	$(MAKE) -f CMakeFiles/mt.dir/build.make CMakeFiles/mt.dir/num_test.cpp.s
-.PHONY : num_test.cpp.s
-
 parameters.o: parameters.cpp.o
 .PHONY : parameters.o
 
@@ -348,9 +324,6 @@ help:
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
-	@echo "... num_test.o"
-	@echo "... num_test.i"
-	@echo "... num_test.s"
 	@echo "... parameters.o"
 	@echo "... parameters.i"
 	@echo "... parameters.s"

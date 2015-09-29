@@ -10,8 +10,6 @@
 #include "mt.h"
 #include "parameters.h"
 #include "HybridTaus.cu"
-#include "output.h"
-#include "num_test.h"
 
 #define BLOCK_SIZE 32
 #define MAX_F 10.0
@@ -22,11 +20,6 @@ extern void UpdatePairs();
 
 __device__ __constant__ Parameters c_par;
 __device__ __constant__ Topology c_top;
-
-#ifdef T3LS
-__device__ Coord d_F[1000][1000];
-#endif
-
 
 void init(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
 	
@@ -61,9 +54,9 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 		  cos_psii, cos_psij, sin_psii, sin_psij,
 		  cos_thetai, cos_thetaj, sin_thetai, sin_thetaj;
 	real xi, xj, yi, yj, zi, zj;
-	real dUdr, dr, gradx, grady, gradz, gradfi, gradpsi, gradtheta, expon, expon2, df, dft;
-	int i,j;
-	Coord ri, rj, fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0}, fj = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+	real dUdr, dr, gradx, grady, gradz, gradfi, gradpsi, gradtheta;
+	int j;
+	Coord ri, rj, fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
 
 	real xp1 = xp1_def;
 	real yp1 = yp1_def;
@@ -546,7 +539,6 @@ __global__ void pairs_kernel(const Coord* d_r){
 	    }
 
 	    float curMinDistArr[2] = {PAIR_CUTOFF, PAIR_CUTOFF};
-	    //int latFlag[2] = {0, 0};
 
 	    for(int j = 0; j < c_par.Ntot; j++){
 	        if (i != j) {
@@ -594,13 +586,11 @@ __global__ void pairs_kernel(const Coord* d_r){
 	                    if (dr < curMinDistArr[0]) {
 	                        curMinDistArr[0] = dr;
 	                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = -j;
-	                        //latFlag[0] = 1; //
 	                    }
 	                } else {
 	                    if ((dr < curMinDistArr[1]) && (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] + j != 0)) {
 	                        curMinDistArr[1] = dr;
 	                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
-	                        //latFlag[1] = 1; //
 	                    }
 	                }
 	            }
@@ -619,10 +609,10 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 		  cos_psii, cos_psij, sin_psii, sin_psij,
 		  cos_thetai, cos_thetaj, sin_thetai, sin_thetaj;
 	real xi, xj, yi, yj, zi, zj;
-	int i,j;
+	int j;
 	Coord ri, rj;
 	real dr, dr2;
-	Energies en; //= (Energies){0,0,0,0,0,0,0};
+	Energies en;
 	real U_lat = 0.0, U_long = 0.0, U_harm = 0.0, U_fi = 0.0, U_psi = 0.0, U_teta = 0.0, U_lj = 0.0;
 
 	real xp1 = xp1_def;
@@ -813,7 +803,6 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
         for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
         	j = c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * traj + ind * c_top.maxLJPerMonomer + k];
 			rj = d_r[j + traj * c_par.Ntot];
-            //rj = d_r[c_top.LJ[k * c_par.Ntr * c_par.Ntot + p]];
             dr = sqrt(pow(ri.x - rj.x, 2) + pow(ri.y - rj.y, 2) + pow(ri.z - rj.z, 2));
             if(dr < lj_cutoff){
                 U_lj += c_par.ljscale * c_par.ljsigma6 / pow(dr,6);
@@ -821,7 +810,6 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
         }
 #endif       
 	
-        //U = U_harm + U_long + U_lat + U_lj + U_psi + U_fi + U_teta;
 		en.U_harm = U_harm / 2;
 		en.U_long = U_long / 2;
 		en.U_lat = U_lat / 2;
@@ -841,7 +829,6 @@ __global__ void LJ_kernel(const Coord* r){
     const int p = blockIdx.x*blockDim.x + threadIdx.x;
     const int i = p % c_par.Ntot;
     const int tr = p/c_par.Ntot;
-    real dr;
     Coord ri, rj;
     
     if(i < c_par.Ntot && tr < c_par.Ntr){
@@ -857,9 +844,7 @@ __global__ void LJ_kernel(const Coord* r){
 
             if((dr < c_par.ljpairscutoff) && (i != j)){
                 c_top.LJCount[i + tr * c_par.Ntot]++;
-                //c_top.LJ[(c_top.LJCount[i + tr * c_par.Ntot] - 1) * c_par.Ntot * c_par.Ntr + c_par.Ntot * tr + i] = j;
                 c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * tr + i * c_top.maxLJPerMonomer + c_top.LJCount[i + tr * c_par.Ntot] - 1] = j;
-                //top.maxLateralPerMonomer * par.Ntot * traj + i * top.maxLateralPerMonomer + top.lateralCount[i]
             }
         }   
     }
@@ -918,9 +903,6 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 	cudaSetDevice(par.device);
 	checkCUDAError("device");
-#ifdef T3LS
-    cudaDeviceSetLimit(cudaLimitPrintfFifoSize, 1024*1024*1024);
-#endif
 
 	cudaMalloc((void**)&d_r, par.Ntot*par.Ntr*sizeof(Coord));
 	checkCUDAError("d_r allocation");
@@ -1003,10 +985,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 #endif
 	
 	initRand(par.rseed, 2*par.Ntot*par.Ntr);
-																
-/*
-|	--------   KERNEL CALLS
-*/																
+																														
 	for(long long int step = 0; step < par.steps; step++){
 
 #ifdef LJ_on
@@ -1014,11 +993,12 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 			LJ_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
 			checkCUDAError("lj_kernel");
-#if defined(ASSEMBLY)
+
+	#if defined(ASSEMBLY)
+
             pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
             checkCUDAError("pairs_kernel");
-            //printf("pairs updated\n");
-#endif
+	#endif
 		}
 #endif
 		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
@@ -1036,7 +1016,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
 		checkCUDAError("compute_forces");
 
-#if defined (TEST_OPT) || defined (OUTPUT_FORCE)
+#if defined (OUTPUT_FORCE)
 		cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
 #endif
 
