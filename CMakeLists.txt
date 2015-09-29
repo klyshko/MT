@@ -28,7 +28,6 @@ option(WITH_MPI "Build with MPI support." OFF)
 option(T3LS "Test Newton's 3rd law with sigmoid function." OFF)
 option(REPULSIVE "Turn on repulsive potential." OFF)
 option(ASSEMBLY "Turn on assembly mode." OFF)
-option(BOUNDARIES "Add boundaries to the problem" OFF)
 
 if(${WITH_MPI})
 	find_package(MPI REQUIRED)
@@ -110,10 +109,6 @@ endif()
 if(${ASSEMBLY})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D ASSEMBLY")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D ASSEMBLY")
-endif()
-if(${BOUNDARIES})
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D BOUNDARIES")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D BOUNDARIES")
 endif()
 
 # Find CUDA

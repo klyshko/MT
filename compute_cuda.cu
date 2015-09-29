@@ -29,31 +29,25 @@ __device__ Coord d_F[1000][1000];
 
 
 void init(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
-
 	
 }
 
-
 #if defined(MORSE)
-__device__ real dmorse(real D, real a, real x)
-{
+__device__ real dmorse(real D, real a, real x){
     return (2*a*D*(1-exp(-a*x))*exp(-a*x));
 }
 
-__device__ real morse_en(real D, real a, real x)
-{
+__device__ real morse_en(real D, real a, real x){
     return D * (1 - exp(-a*x)) * (1 - exp(-a*x)) - D;
 }
 #endif
 
 #if defined(BARR)
-__device__ real dbarr(real a, real r, real w, real x)
-{
+__device__ real dbarr(real a, real r, real w, real x){
     return ( - a*exp(-(x-r)*(x-r)/(2*w*w)) * (x-r)/(w*w));
 }
 
-__device__ real barr(real a, real r, real w, real x)
-{
+__device__ real barr(real a, real r, real w, real x){
     return a*exp(-(x-r)*(x-r)/(2*w*w));
 }
 #endif
@@ -153,12 +147,12 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 					R_MON* (-yi + yj - R_MON* (-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
 					R_MON* (-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj))*(-cos_fii*cos_psii - sin_fii*sin_psii*sin_thetai));
 
-			fi.x     += -c_par.C * gradx;
-			fi.y     += -c_par.C * grady;
-			fi.z     += -c_par.C * gradz;
-			fi.fi    += -c_par.C * gradfi;
-			fi.psi   += -c_par.C * gradpsi;
-			fi.theta += -c_par.C * gradtheta;
+			fi.x     += -c_par.C * dr * gradx;
+			fi.y     += -c_par.C * dr * grady;
+			fi.z     += -c_par.C * dr * gradz;
+			fi.fi    += -c_par.C * dr * gradfi;
+			fi.psi   += -c_par.C * dr * gradpsi;
+			fi.theta += -c_par.C * dr * gradtheta;
 		
 		
             if(dr < ANGLE_CUTOFF )
@@ -181,15 +175,12 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 		
 		for(int k = 0; k < c_top.longitudinalCount[ind + c_par.Ntot * traj]; k++){
 			j = c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + ind * c_top.maxLongitudinalPerMonomer + k];
-			if(j < 0 && ind != j){
+			if(j < 0){
 				R_MON = r_mon;
 				j *= -1;
 			}
-			else if (j >= 0 && ind != j){
-				R_MON = -r_mon;
-			}
 			else {
-				return;
+				R_MON = -r_mon;
 			}
 			rj = d_r[j + traj*c_par.Ntot];
 			cos_fij = cosf(rj.fi);
@@ -248,21 +239,21 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 
 #if defined(MORSE)
-            dUdr = dmorse(c_par.D_long, c_par.A_long, dr)/dr;
+            dUdr = dmorse(c_par.D_long, c_par.A_long, dr);
 #endif
 
 #if defined(BARR)
-            dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr)/dr;
+            dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr);
 #endif
-        	/*
+        
 			fi.x     += -dUdr*gradx;
 			fi.y     += -dUdr*grady;
 			fi.z     += -dUdr*gradz;
 			fi.fi    += -dUdr*gradfi;
 			fi.psi   += -dUdr*gradpsi;
 			fi.theta += -dUdr*gradtheta;
-			*/
-
+			
+			
             if(dr < ANGLE_CUTOFF)
             {
                 if(R_MON > 0){
@@ -423,15 +414,15 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 #if defined(MORSE)
 				if (c_top.mon_type[ind] != c_top.mon_type[j]) {
-					dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr)/dr;
+					dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr);
 				}
 	            else {
-	            	dUdr = dmorse(c_par.D_lat, c_par.A_lat, dr)/dr;
+	            	dUdr = dmorse(c_par.D_lat, c_par.A_lat, dr);
 	            }
 #endif	            
 
 #if defined(BARR)
-	            dUdr += dbarr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr)/dr;
+	            dUdr += dbarr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr);
 #endif		
 
 				fi.x     += -dUdr*gradx;
@@ -463,39 +454,18 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 #if defined(REPULSIVE)
     if (ri.z < 0){
-        fi.z += 0.005 * fabs(ri.z + REP_H);
+        fi.z += c_par.rep_eps * fabs(ri.z + c_par.rep_h);
     } else if (ri.z > REP_H /2) {
-    	fi.z += -0.005 * fabs(ri.z - REP_H / 2);
+    	fi.z += - c_par.rep_eps * fabs(ri.z - c_par.rep_h / 2);
     }
 
     real rad2 = ri.x * ri.x + ri.y * ri.y;
-    if (rad2 > REP_R * REP_R){
+    if (rad2 > c_par.rep_r * c_par.rep_r){
 
-        real coeff = -0.005 * (sqrt(rad2) - REP_R);
+        real coeff = -c_par.rep_eps * (sqrt(rad2) - c_par.rep_r);
         fi.x += ri.x * coeff ;
         fi.y += ri.y * coeff;
     }
-#endif
-
-#if defined(BOUNDARIES)
-
-    if (ri.x < xmin_bound) {
-    	fi.x += -ks_bound * (x - xmin_bound);
-    } else if (ri.x > xmax_bound) {
-    	fi.x += -ks_bound * (x - xmax_bound);
-    } 
-
-    if (ri.y < ymin_bound) {
-    	fi.y += -ks * (y - ymin_bound);
-    } else if (ri.y > ymax_bound) {
-    	fi.y += -ks_bound * (y - ymax_bound);
-    } 
-
-    if (ri.z < zmin_bound) {
-    	fi.z += -ks_bound * (z - zmin_bound);
-    } else if (ri.z > zmax_bound) {
-    	fi.z += -ks_bound * (z - zmax_bound);
-    } 
 #endif
     	
 		d_f[p] = fi;
@@ -1072,9 +1042,6 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 #if defined (TEST_OPT) || defined (OUTPUT_FORCE)
 		cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
-		for (int i = 0; i < par.Ntot; i++){
-        	printf("Force[%d].x = %f, y = %f, z = %f, psi = %f, fi = %f, teta = %f\n", i, f[i].x, f[i].y, f[i].z, f[i].psi, f[i].fi, f[i].theta);
-    	}
 #endif
 
 		integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
