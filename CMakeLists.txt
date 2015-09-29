@@ -127,15 +127,15 @@ endif()
 
 
 set(SOURCES
-		dcdio.cpp
-		xyzio.cpp
-		main.cpp
-		pdbio.cpp
-		configreader.cpp
-		wrapper.cpp
-		timer.cpp
-		parameters.cpp
-        compute_cuda.cu
+		src/dcdio.cpp
+		src/xyzio.cpp
+		src/main.cpp
+		src/pdbio.cpp
+		src/configreader.cpp
+		src/wrapper.cpp
+		src/timer.cpp
+		src/parameters.cpp
+        src/compute_cuda.cu
 )
 
 cuda_add_executable(mt ${SOURCES})
