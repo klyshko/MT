@@ -51,10 +51,6 @@
 #define delta_psi	0.001
 #define delta_theta	0.001
 
-//repulsive walls potential
-#define REP_H 160
-#define REP_R 40
-
 //assembly_mode
 #define PAIR_CUTOFF 2.0
 

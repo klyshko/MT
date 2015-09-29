@@ -198,14 +198,9 @@
 #define  D_LONG       "D_long"
 #define  D_LAT        "D_lat"
 
-#define  XMIN_BOUND    "xmin_bound"
-#define  XMAX_BOUND    "xmax_bound"
-#define  YMIN_BOUND    "ymin_bound"
-#define  YMAX_BOUND    "ymax_bound"
-#define  ZMIN_BOUND    "zmin_bound"
-#define  ZMAX_BOUND    "zmax_bound"
-#define  KS_BOUND      "ks_bound"
-
+#define  REP_H    "rep_h"
+#define  REP_R    "rep_r"
+#define  REP_EPS    "rep_eps"
 
 #define PARAMETER_GAMMA_R						"gammaR"
 #define PARAMETER_GAMMA_THETA					"gammaTheta"
@@ -356,14 +351,10 @@ typedef struct {
 	real r0_lat;	
 	real d_lat;
 #endif
-#if defined(BOUNDARIES)
-    real xmin_bound;
-    real xmax_bound;
-    real ymin_bound;
-    real ymax_bound;
-    real zmin_bound;
-    real zmax_bound;
-    real ks_bound;
+#if defined(REPULSIVE)
+    real rep_h;
+    real rep_r;
+    real rep_eps;
 #endif
 #if defined(BARR)
     real a_barr_long;

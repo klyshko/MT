@@ -102,12 +102,11 @@ int main(int argc, char *argv[]){
     exit(0);
 #endif
 
-//#ifndef  TEST_OPT
+
     initTimer();
 
 #if defined(ASSEMBLY)
     AssemblyInit();
-    //UpdatePairs();
 #endif
 
 #ifdef OUTPUT_EN
@@ -304,14 +303,9 @@ void initParameters(int argc, char* argv[]){
 #endif
 
 #if defined(BOUNDARIES)
-    par.xmax_bound = getFloatParameter(XMAX_BOUND);
-    par.xmin_bound = getFloatParameter(XMIN_BOUND);
-    par.ymax_bound = getFloatParameter(YMAX_BOUND);
-    par.ymin_bound = getFloatParameter(YMIN_BOUND);
-    par.zmax_bound = getFloatParameter(ZMAX_BOUND);
-    par.zmin_bound = getFloatParameter(ZMIN_BOUND);
-    par.ks_bound = getFloatParameter(KS_BOUND);
-    
+    par.rep_h = getFloatParameter(REP_H);
+    par.rep_r = getFloatParameter(REP_R);
+    par.rep_eps = getFloatParameter(REP_EPS);    
 #endif
 
     parseParametersFile(par.condFilename, argc, argv);
@@ -455,7 +449,7 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
             for(j = 0; j < par.Ntot; j++){
                 if( (pdb.atoms[i].resid == (pdb.atoms[j].resid + 1)) &&
                     (pdb.atoms[i].chain == pdb.atoms[j].chain) &&
-                    (pdb.atoms[i].id == (pdb.atoms[j].id + 1))){
+                    (pdb.atoms[i].id == (pdb.atoms[j].id + 1)) && (i != j) ){
                     top.longitudinalCount[i + par.Ntot * traj]++;
                     if(top.maxLongitudinalPerMonomer < top.longitudinalCount[i + par.Ntot * traj])
                             top.maxLongitudinalPerMonomer = top.longitudinalCount[i + par.Ntot * traj];
