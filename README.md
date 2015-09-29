@@ -15,7 +15,7 @@
  4) Configure config files in config/
  5) Run by shell command:
  
- 	./mt config/config.conf > outputofshell &
+ 	./mt config/config.conf > outputofterminal.out &
  	
  6) Visualize dcd trajectories in VMD
  7) PROFIT!
