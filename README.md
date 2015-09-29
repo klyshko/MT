@@ -8,11 +8,14 @@
  3) Compile - in MT/ folder: 
 
  	ccmake .
- then press 'c' 'g'
+ then press 'c' 'g' ;
+ 
  	make
 
  4) Configure config files in config/
- 5) Run by shell command
+ 5) Run by shell command:
+ 
  	./mt config/config.conf > outputofshell &
+ 	
  6) Visualize dcd trajectories in VMD
  7) PROFIT!
