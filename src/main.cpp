@@ -10,6 +10,7 @@
 #include "configreader.h"
 #include "timer.h"
 #include "wrapper.h"
+#include <stdio.h>
 
 #ifdef USE_MPI
     #include <mpi.h>
@@ -26,7 +27,7 @@ void AssemblyInit();
 void writeRestart(long long int step);
 void readRestart();
 //void OutputEnergies(int index, int traj);
-void OutputAllEnergies();
+void OutputAllEnergies(long long int step);
 void OutputForces();
 
 extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
@@ -145,7 +146,7 @@ void update(long long int step){
 #endif
 
 #ifdef OUTPUT_EN
-    OutputAllEnergies();
+    OutputAllEnergies(step);
 #endif
 
 }
@@ -663,27 +664,43 @@ void saveCoordDCD(){
     }
 }
 
-void OutputAllEnergies(){
+void OutputAllEnergies(long long int step){
 
-    Energies fullEnergy;
-    fullEnergy.U_harm = 0;
-    fullEnergy.U_long = 0;
-    fullEnergy.U_lat = 0;
-    fullEnergy.U_psi = 0;
-    fullEnergy.U_fi = 0;
-    fullEnergy.U_teta = 0;
-    fullEnergy.U_lj = 0;
+    Energies* fullEnergy = (Energies*)malloc(par.Ntr * sizeof(Energies));
 
-    for (int i = 0; i < par.Ntot; i++){
-        fullEnergy.U_harm += energies[i].U_harm;
-        fullEnergy.U_long += energies[i].U_long;
-        fullEnergy.U_lat += energies[i].U_lat;
-        fullEnergy.U_psi += energies[i].U_psi;
-        fullEnergy.U_fi += energies[i].U_fi;
-        fullEnergy.U_teta += energies[i].U_teta;
-        fullEnergy.U_lj += energies[i].U_lj;
+    for (int tr = 0; tr < par.Ntr; tr++){
+        fullEnergy[tr].U_harm = 0;
+        fullEnergy[tr].U_long = 0;
+        fullEnergy[tr].U_lat = 0;
+        fullEnergy[tr].U_psi = 0;
+        fullEnergy[tr].U_fi = 0;
+        fullEnergy[tr].U_teta = 0;
+        fullEnergy[tr].U_lj = 0;
+
+        for (int i = 0; i < par.Ntot; i++){
+            fullEnergy[tr].U_harm += energies[i + par.Ntot * tr].U_harm;
+            fullEnergy[tr].U_long += energies[i + par.Ntot * tr].U_long;
+            fullEnergy[tr].U_lat += energies[i + par.Ntot * tr].U_lat;
+            fullEnergy[tr].U_psi += energies[i + par.Ntot * tr].U_psi;
+            fullEnergy[tr].U_fi += energies[i + par.Ntot * tr].U_fi;
+            fullEnergy[tr].U_teta += energies[i + par.Ntot * tr].U_teta;
+            fullEnergy[tr].U_lj += energies[i + par.Ntot * tr].U_lj;
+        }
+
+        if (!isfinite(fullEnergy[tr].U_harm) || !isfinite(fullEnergy[tr].U_long) || !isfinite(fullEnergy[tr].U_lat)) {
+            exit(0);
+        }
+        char fileName[64];
+        sprintf(fileName, "energies%d.dat", tr);
+        FILE* energyFile = fopen(fileName, "a");
+        printf("ENERGIES[%d] harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", tr, 
+            fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
+
+        fprintf(energyFile, "%lld\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\n",
+         step, fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
+        fclose(energyFile);
     }
-    printf("ENERGIES harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", fullEnergy.U_harm, fullEnergy.U_long, fullEnergy.U_lat, fullEnergy.U_psi, fullEnergy.U_fi, fullEnergy.U_teta, fullEnergy.U_lj);
+    
 }
 
 void OutputForces(){
