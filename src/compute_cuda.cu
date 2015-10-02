@@ -140,10 +140,6 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 					R_MON* (-yi + yj - R_MON* (-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
 					R_MON* (-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj))*(-cos_fii*cos_psii - sin_fii*sin_psii*sin_thetai));
 
-			if (!isfinite(dr)){
-
-				return;
-			}
 
 			fi.x     += -c_par.C * dr * gradx;
 			fi.y     += -c_par.C * dr * grady;
@@ -244,11 +240,6 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
             dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr);
 #endif
         
-        	if (!isfinite(dUdr)){
-
-				return;
-			}
-
 			fi.x     += -dUdr*gradx;
 			fi.y     += -dUdr*grady;
 			fi.z     += -dUdr*gradz;
@@ -428,12 +419,6 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	            dUdr += dbarr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr);
 #endif		
 
-
-	            if (!isfinite(dUdr)){
-
-					return;
-				}
-				
 				fi.x     += -dUdr*gradx;
 				fi.y     += -dUdr*grady;
 				fi.z     += -dUdr*gradz;

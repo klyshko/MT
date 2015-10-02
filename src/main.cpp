@@ -143,6 +143,7 @@ void update(long long int step){
         f_sum.z += f[i].z;
     }
     printf("SF for 1st traj %.16f\n", sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
+    OutputForces();
 #endif
 
 #ifdef OUTPUT_EN
@@ -688,7 +689,8 @@ void OutputAllEnergies(long long int step){
         }
 
         if (!isfinite(fullEnergy[tr].U_harm) || !isfinite(fullEnergy[tr].U_long) || !isfinite(fullEnergy[tr].U_lat)) {
-            exit(0);
+            printf("Some energy in %d trajectory is NaN. NOT Exit program\n", tr);
+            //exit(0);
         }
         char fileName[64];
         sprintf(fileName, "energies%d.dat", tr);
@@ -705,7 +707,7 @@ void OutputAllEnergies(long long int step){
 
 void OutputForces(){
 
-    for (int i = 0; i < par.Ntot; i++){
+    for (int i = 0; i < par.Ntot * par.Ntr; i++){
         printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
     }
     
