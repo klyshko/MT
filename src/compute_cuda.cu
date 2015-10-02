@@ -3,6 +3,9 @@
  *
  *  Created on: 04.06.2012
  *      Author: zhmurov
+
+   Modified on: 09.01.2015
+   		Author: klyshko
  */
 
 #include <cuda.h>
@@ -438,10 +441,16 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			dr = sqrt(pow(ri.x-rj.x,2)+pow(ri.y-rj.y,2)+pow(ri.z-rj.z,2));
 			
 			if( dr < lj_cutoff )
-            {
-				fi.x += c_par.ljscale*c_par.ljsigma6*(6/pow(dr,8))*(ri.x-rj.x);
-				fi.y += c_par.ljscale*c_par.ljsigma6*(6/pow(dr,8))*(ri.y-rj.y);
-				fi.z += c_par.ljscale*c_par.ljsigma6*(6/pow(dr,8))*(ri.z-rj.z); 
+            {	
+            	real df = c_par.ljscale*c_par.ljsigma6*(6/pow(dr,8));
+            	if (!isfinite(df)){
+            		df = 99999999.0;	
+            	} 
+
+            	fi.x += df*(ri.x-rj.x);
+				fi.y += df*(ri.y-rj.y);
+				fi.z += df*(ri.z-rj.z); 
+				
 			}
 		}
 #endif
