@@ -442,14 +442,14 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			
 			if( dr < lj_cutoff )
             {	
-            	real df = c_par.ljscale*c_par.ljsigma6*(6/pow(dr,8));
+            	real df = 6/pow(dr,8);
             	if (!isfinite(df)){
-            		df = 99999999.0;	
+            		df = 99999.0;	
             	} 
 
-            	fi.x += df*(ri.x-rj.x);
-				fi.y += df*(ri.y-rj.y);
-				fi.z += df*(ri.z-rj.z); 
+            	fi.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
+				fi.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
+				fi.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z); 
 				
 			}
 		}
@@ -872,6 +872,45 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 			ri = d_r[p];
 			rf_xyz = rforce(p);
 			rf_ang = rforce(p + c_par.Ntot*c_par.Ntr);
+
+			if (!isfinite(f.x)){
+				f.x = 0.0;
+			} else if ((fabs(f.x) > 999999.0) && (f.x != 0.0)) {
+				f.x = 99999.0 * f.x / fabs(f.x) ;
+			} 
+
+			if (!isfinite(f.y)){
+				f.y = 0.0;
+			} else if ((fabs(f.y) > 999999.0) && (f.y != 0.0)) {
+				f.y = 99999.0 * f.y / fabs(f.y) ;
+			} 
+
+			if (!isfinite(f.z)){
+				f.z = 0.0;
+			} else if ((fabs(f.z) > 999999.0) && (f.z != 0.0)) {
+				f.z = 99999.0 * f.z / fabs(f.z) ;
+			} 
+
+			if (!isfinite(f.theta)){
+				f.theta = 0.0;
+			} else if ((fabs(f.theta) > 999999.0) && (f.theta != 0.0)) {
+				f.theta = 99999.0 * f.theta / fabs(f.theta) ;
+			} 
+
+			if (!isfinite(f.fi)){
+				f.fi = 0.0;
+			} else if ((fabs(f.fi) > 999999.0) && (f.fi != 0.0)) {
+				f.fi = 99999.0 * f.fi / fabs(f.fi) ;
+			} 
+
+			if (!isfinite(f.psi)){
+				f.psi = 0.0;
+			} else if ((fabs(f.psi) > 999999.0) && (f.psi != 0.0)) {
+				f.psi = 99999.0 * f.psi / fabs(f.psi);
+			} 
+ 
+			
+
 			ri.x += (c_par.dt/c_par.gammaR)*f.x + c_par.varR*rf_xyz.x;
 			ri.y += (c_par.dt/c_par.gammaR)*f.y + c_par.varR*rf_xyz.y;
 			ri.z += (c_par.dt/c_par.gammaR)*f.z + c_par.varR*rf_xyz.z;
