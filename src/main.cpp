@@ -26,16 +26,22 @@ void UpdatePairs();
 void AssemblyInit();
 void writeRestart(long long int step);
 void readRestart();
-//void OutputEnergies(int index, int traj);
 void OutputAllEnergies(long long int step);
+void OutputSumForce();
 void OutputForces();
+void average_LJ();
 
-extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
+extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies, Coord* flj, Coord* fother);
 
 Parameters par;
 Coord* r;
 Coord* v;
 Coord* f;
+
+#ifdef AVERAGE_LJ
+    Coord* flj;
+    Coord* fother;
+#endif
 
 Topology top;
 Energies* energies;
@@ -102,7 +108,13 @@ int main(int argc, char *argv[]){
     energies = (Energies*)malloc(par.Ntot * par.Ntr * sizeof(Energies));
 #endif
 
-    compute(r, f, par, top, energies);
+
+#ifdef AVERAGE_LJ
+    flj = (Coord*)malloc(par.Ntot * par.Ntr * sizeof(Coord));
+    fother = (Coord*)malloc(par.Ntot * par.Ntr * sizeof(Coord));
+#endif
+
+    compute(r, f, par, top, energies, flj, fother);
     saveCoordPDB("result_xyz.pdb", "result_ang.pdb");
     
 #ifdef USE_MPI
@@ -134,6 +146,41 @@ void update(long long int step){
     saveCoordDCD();
 
 #ifdef OUTPUT_FORCE
+    //OutputSumForce();
+    //OutputForces();
+    #ifdef AVERAGE_LJ
+        average_LJ();
+    #endif
+
+#endif
+
+#ifdef OUTPUT_EN
+    OutputAllEnergies(step);
+#endif
+
+}
+
+void average_LJ(){
+    Coord f_sum_lj;
+    f_sum_lj.x = 0.0; f_sum_lj.y = 0.0; f_sum_lj.z = 0.0;
+    float f_sum_lj_magnitude = 0.0;
+    for(int i = 0; i < par.Ntot; i++)
+    {
+        f_sum_lj_magnitude += sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z);
+    }
+
+    float sigma = 0;
+    for (int i = 0; i < par.Ntot; i++) {
+        sigma += (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot) * (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot);
+    }
+    sigma /= par.Ntot;
+    sigma = sqrt(sigma);
+
+    printf("Av/dev:\t%f\t%f\n", f_sum_lj_magnitude / par.Ntot, sigma);
+  
+}
+
+void OutputSumForce(){
     Coord f_sum;
     f_sum.x = 0; f_sum.y = 0; f_sum.z = 0;
     for(int i = 0; i < par.Ntot; i++)
@@ -143,13 +190,6 @@ void update(long long int step){
         f_sum.z += f[i].z;
     }
     printf("SF for 1st traj %.16f\n", sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
-    OutputForces();
-#endif
-
-#ifdef OUTPUT_EN
-    OutputAllEnergies(step);
-#endif
-
 }
 
 void initParameters(int argc, char* argv[]){

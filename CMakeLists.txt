@@ -25,6 +25,7 @@ option(REDUCE_TO_2D  "Freeze any movement along Y, psi, phi to make this model b
 option(WITH_MPI "Build with MPI support." OFF)
 option(REPULSIVE "Turn on repulsive potential." OFF)
 option(ASSEMBLY "Turn on assembly mode." OFF)
+option(AVERAGE_LJ "Output average LJ force and st deviation" OFF)
 
 if(${WITH_MPI})
 	find_package(MPI REQUIRED)
@@ -37,6 +38,11 @@ endif()
 if(${OUTPUT_EN})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D OUTPUT_EN")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D OUTPUT_EN")
+endif()
+
+if(${AVERAGE_LJ})
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D AVERAGE_LJ")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D AVERAGE_LJ")
 endif()
 
 if(${BARR})

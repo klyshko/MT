@@ -49,7 +49,7 @@ __device__ real barr(real a, real r, real w, real x){
 #endif
 
 
-__global__ void compute_kernel(const Coord* d_r, Coord* d_f){
+__global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord* d_fother){//){
 	const int p = blockIdx.x*blockDim.x + threadIdx.x;
 	const int ind = p%c_par.Ntot;
 	const int traj = p/c_par.Ntot;
@@ -60,6 +60,11 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	real dUdr, dr, gradx, grady, gradz, gradfi, gradpsi, gradtheta;
 	int j;
 	Coord ri, rj, fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+
+#ifdef AVERAGE_LJ	///
+	Coord flj = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+	Coord fother = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+#endif	///
 
 	real xp1 = xp1_def;
 	real yp1 = yp1_def;
@@ -431,7 +436,12 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			}
 
 		}
-		
+
+#ifdef AVERAGE_LJ
+		fother.x = fi.x;
+		fother.y = fi.y;
+		fother.z = fi.z;
+#endif	
 
 #ifdef LJ_on
 		for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
@@ -443,16 +453,25 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			if( dr < lj_cutoff )
             {	
             	real df = 6/pow(dr,8);
+            	
+            	/*
             	if (!isfinite(df)){
             		df = 99999.0;	
             	} 
-
+				*/
             	fi.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
 				fi.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
 				fi.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z); 
-				
+			#ifdef AVERAGE_LJ
+				flj.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
+				flj.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
+				flj.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z); 
+			#endif
+
 			}
 		}
+
+
 #endif
 
 #if defined(REPULSIVE)
@@ -470,9 +489,16 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
         fi.y += ri.y * coeff;
     }
 #endif
-    	
+    	#ifdef AVERAGE_LJ
+	    	d_fother[p] = fother;
+	    	d_flj[p] = flj;
+	    	flj = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+			fother = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+		#endif
+
 		d_f[p] = fi;
 		fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+		
 		
 	}
 }
@@ -872,7 +898,7 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 			ri = d_r[p];
 			rf_xyz = rforce(p);
 			rf_ang = rforce(p + c_par.Ntot*c_par.Ntr);
-
+			/*
 			if (!isfinite(f.x)){
 				f.x = 0.0;
 			} else if ((fabs(f.x) > 999999.0) && (f.x != 0.0)) {
@@ -910,7 +936,7 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 			} 
  
 			
-
+*/
 			ri.x += (c_par.dt/c_par.gammaR)*f.x + c_par.varR*rf_xyz.x;
 			ri.y += (c_par.dt/c_par.gammaR)*f.y + c_par.varR*rf_xyz.y;
 			ri.z += (c_par.dt/c_par.gammaR)*f.z + c_par.varR*rf_xyz.z;
@@ -944,11 +970,14 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 	}
 }
 
-void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
+void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies, Coord* flj, Coord* fother){
 
 	Coord* d_r;
 	Coord* d_f;
 	Topology topGPU;
+
+	Coord* d_flj;
+	Coord* d_fother;
 
 	cudaSetDevice(par.device);
 	checkCUDAError("device");
@@ -967,6 +996,13 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		f[i].y = 0.0f;
 		f[i].z = 0.0f;
 	}
+
+#ifdef AVERAGE_LJ
+	cudaMalloc((void**)&d_flj, par.Ntot*par.Ntr*sizeof(Coord));
+	checkCUDAError("d_flj allocation");
+	cudaMalloc((void**)&d_fother, par.Ntot*par.Ntr*sizeof(Coord));
+	checkCUDAError("d_fother allocation");
+#endif
 
 	cudaMemcpy(d_f, f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
 	checkCUDAError("copy_forces");
@@ -1062,11 +1098,17 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 			update(step);
 		}
 
-		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
+		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f, d_flj, d_fother);
 		checkCUDAError("compute_forces");
 
 #if defined (OUTPUT_FORCE)
+
 		cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
+	#ifdef AVERAGE_LJ
+		cudaMemcpy(flj, d_flj, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
+		cudaMemcpy(fother, d_fother, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
+	#endif
+
 #endif
 
 		integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
@@ -1075,6 +1117,11 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 	cudaFree(d_r);
 	cudaFree(d_f);
+
+#ifdef AVERAGE_LJ
+	cudaFree(d_flj);
+	cudaFree(d_fother);
+#endif
 	cudaFree(topGPU.harmonicCount);
 	cudaFree(topGPU.longitudinalCount);
 	cudaFree(topGPU.lateralCount);
