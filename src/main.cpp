@@ -121,6 +121,11 @@ int main(int argc, char *argv[]){
         MPI::COMM_WORLD.Barrier();
         MPI::Finalize();
 #endif
+
+#ifdef AVERAGE_LJ
+    free(flj);
+    free(fother);
+#endif
     free(r);
     free(f);
     free(v);
@@ -162,21 +167,43 @@ void update(long long int step){
 
 void average_LJ(){
     Coord f_sum_lj;
+    Coord f_sum_other;
+    f_sum_other.x = 0.0; f_sum_other.y = 0.0; f_sum_other.z = 0.0;
     f_sum_lj.x = 0.0; f_sum_lj.y = 0.0; f_sum_lj.z = 0.0;
+
     float f_sum_lj_magnitude = 0.0;
+    float sigma_lj = 0;
+
+    float f_sum_other_magnitude = 0.0;
+    float sigma_other = 0;
+
     for(int i = 0; i < par.Ntot; i++)
     {
         f_sum_lj_magnitude += sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z);
     }
 
-    float sigma = 0;
     for (int i = 0; i < par.Ntot; i++) {
-        sigma += (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot) * (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot);
+        sigma_lj += (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot) * (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot);
     }
-    sigma /= par.Ntot;
-    sigma = sqrt(sigma);
+    sigma_lj /= par.Ntot;
+    sigma_lj = sqrt(sigma_lj);
 
-    printf("Av/dev:\t%f\t%f\n", f_sum_lj_magnitude / par.Ntot, sigma);
+    for(int i = 0; i < par.Ntot; i++)
+    {
+        f_sum_other_magnitude += sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z);
+    }
+
+    for (int i = 0; i < par.Ntot; i++) {
+        sigma_other += (sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z) - f_sum_other_magnitude / par.Ntot) * (sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z) - f_sum_other_magnitude / par.Ntot);
+    }
+    sigma_other /= par.Ntot;
+    sigma_other = sqrt(sigma_other);
+
+
+
+
+
+    printf("Av/dev:\t%f\t%f\t\t\t%f\t%f\n", f_sum_lj_magnitude / par.Ntot, sigma_lj, f_sum_other_magnitude / par.Ntot, sigma_other);
   
 }
 
