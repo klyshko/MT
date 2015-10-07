@@ -49,7 +49,7 @@ __device__ real barr(real a, real r, real w, real x){
 #endif
 
 
-__global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord* d_fother){//){
+__global__ void compute_kernel(const Coord* d_r, Coord* d_f){//){
 	const int p = blockIdx.x*blockDim.x + threadIdx.x;
 	const int ind = p%c_par.Ntot;
 	const int traj = p/c_par.Ntot;
@@ -61,10 +61,10 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 	int j;
 	Coord ri, rj, fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
 
-#ifdef AVERAGE_LJ	///
+#ifdef AVERAGE_LJ	
 	Coord flj = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
 	Coord fother = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
-#endif	///
+#endif	
 
 	real xp1 = xp1_def;
 	real yp1 = yp1_def;
@@ -436,7 +436,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 			}
 
 		}
-
+	
 #ifdef AVERAGE_LJ
 		fother.x = fi.x;
 		fother.y = fi.y;
@@ -475,26 +475,29 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 #endif
 
 #if defined(REPULSIVE)
-    if (ri.z < 0){
-        fi.z += c_par.rep_eps * fabs(ri.z + c_par.rep_h);
-    } else if (ri.z > REP_H /2) {
-    	fi.z += - c_par.rep_eps * fabs(ri.z - c_par.rep_h / 2);
-    }
+	    if (ri.z < 0){
 
-    real rad2 = ri.x * ri.x + ri.y * ri.y;
-    if (rad2 > c_par.rep_r * c_par.rep_r){
+	        fi.z += c_par.rep_eps * fabs(ri.z + c_par.rep_h);
+	    } else if (ri.z > c_par.rep_h / 2) {
 
-        real coeff = -c_par.rep_eps * (sqrt(rad2) - c_par.rep_r);
-        fi.x += ri.x * coeff ;
-        fi.y += ri.y * coeff;
-    }
+	    	fi.z += - c_par.rep_eps * fabs(ri.z - c_par.rep_h / 2); 
+	    }
+
+	    real rad2 = ri.x * ri.x + ri.y * ri.y;
+	    if (rad2 > c_par.rep_r * c_par.rep_r){
+
+	        real coeff = -c_par.rep_eps * (sqrt(rad2) - c_par.rep_r);
+	        fi.x += ri.x * coeff ;
+	        fi.y += ri.y * coeff;
+	    }
 #endif
-    	#ifdef AVERAGE_LJ
-	    	d_fother[p] = fother;
-	    	d_flj[p] = flj;
-	    	flj = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
-			fother = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
-		#endif
+
+#ifdef AVERAGE_LJ
+		d_fother[p] = fother;
+		d_flj[p] = flj;
+		flj = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+		fother = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+#endif
 
 		d_f[p] = fi;
 		fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
@@ -515,7 +518,7 @@ __global__ void pairs_kernel(const Coord* d_r){
     Coord ri, rj;
     real xp1, yp1, zp1, xp2, yp2, zp2;
     real R_MON;
-
+    
     if(i < c_par.Ntot && traj < c_par.Ntr){
 
     	c_top.lateral[c_par.Ntot * traj * c_top.maxLateralPerMonomer +  c_top.maxLateralPerMonomer * i] = LARGENUMBER;
@@ -633,6 +636,8 @@ __global__ void pairs_kernel(const Coord* d_r){
 	        }           
 	    }
     }
+
+    
     
 }
 
@@ -715,6 +720,8 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
                 }
             }
 		}
+
+		
 		for(int k = 0; k < c_top.longitudinalCount[ind + traj * c_par.Ntot]; k++){
 			j = c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + c_top.maxLongitudinalPerMonomer * ind + k];
 			if (j < 0) {
@@ -970,14 +977,14 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 	}
 }
 
-void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies, Coord* flj, Coord* fother){
+void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
 
 	Coord* d_r;
 	Coord* d_f;
 	Topology topGPU;
 
-	Coord* d_flj;
-	Coord* d_fother;
+	//Coord* d_flj;
+	//Coord* d_fother;
 
 	cudaSetDevice(par.device);
 	checkCUDAError("device");
@@ -1073,18 +1080,23 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 																														
 	for(long long int step = 0; step < par.steps; step++){
 
+		//printf("Inside steps\n");
+
 #ifdef LJ_on
 		if(step % par.ljpairsupdatefreq == 0){ //pairs update frequency 
-
+			//printf("LJPairs are updated");
 			LJ_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
 			checkCUDAError("lj_kernel");
 
-	#if defined(ASSEMBLY)
+		}
+#endif
 
+#if defined(ASSEMBLY)
+		if(step % par.ljpairsupdatefreq == 0){
+			//printf("Pairs are updated");
             pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
             checkCUDAError("pairs_kernel");
-	#endif
-		}
+        }
 #endif
 		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
 #ifdef OUTPUT_EN
@@ -1098,7 +1110,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 			update(step);
 		}
 
-		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f, d_flj, d_fother);
+		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
 		checkCUDAError("compute_forces");
 
 #if defined (OUTPUT_FORCE)

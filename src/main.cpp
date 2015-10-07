@@ -31,17 +31,16 @@ void OutputSumForce();
 void OutputForces();
 void average_LJ();
 
-extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies, Coord* flj, Coord* fother);
+extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
 
 Parameters par;
 Coord* r;
 Coord* v;
 Coord* f;
 
-#ifdef AVERAGE_LJ
-    Coord* flj;
-    Coord* fother;
-#endif
+Coord* flj;
+Coord* fother;
+
 
 Topology top;
 Energies* energies;
@@ -114,7 +113,7 @@ int main(int argc, char *argv[]){
     fother = (Coord*)malloc(par.Ntot * par.Ntr * sizeof(Coord));
 #endif
 
-    compute(r, f, par, top, energies, flj, fother);
+    compute(r, f, par, top, energies);
     saveCoordPDB("result_xyz.pdb", "result_ang.pdb");
     
 #ifdef USE_MPI
@@ -151,7 +150,7 @@ void update(long long int step){
     saveCoordDCD();
 
 #ifdef OUTPUT_FORCE
-    //OutputSumForce();
+    OutputSumForce();
     //OutputForces();
     #ifdef AVERAGE_LJ
         average_LJ();
@@ -166,57 +165,64 @@ void update(long long int step){
 }
 
 void average_LJ(){
-    Coord f_sum_lj;
-    Coord f_sum_other;
-    f_sum_other.x = 0.0; f_sum_other.y = 0.0; f_sum_other.z = 0.0;
-    f_sum_lj.x = 0.0; f_sum_lj.y = 0.0; f_sum_lj.z = 0.0;
 
-    float f_sum_lj_magnitude = 0.0;
-    float sigma_lj = 0;
+    for (int tr = 0; tr < par.Ntr; tr++){
 
-    float f_sum_other_magnitude = 0.0;
-    float sigma_other = 0;
+        Coord f_sum_lj;
+        f_sum_lj.x = 0.0; f_sum_lj.y = 0.0; f_sum_lj.z = 0.0;
+        float f_sum_lj_magnitude = 0.0;
+        float sigma_lj = 0;
 
-    for(int i = 0; i < par.Ntot; i++)
-    {
-        f_sum_lj_magnitude += sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z);
+        for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
+            f_sum_lj_magnitude += sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z);
+        }
+
+        for (int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++) {
+            sigma_lj += (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot) * (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot);
+        }
+
+        sigma_lj /= par.Ntot;
+        sigma_lj = sqrt(sigma_lj);
+
+
+
+        Coord f_sum_other;
+        f_sum_other.x = 0.0; f_sum_other.y = 0.0; f_sum_other.z = 0.0;
+        float f_sum_other_magnitude = 0.0;
+        float sigma_other = 0;
+
+        for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
+            f_sum_other_magnitude += sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z);
+        }
+
+        for (int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++) {
+            sigma_other += (sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z) - f_sum_other_magnitude / par.Ntot) * (sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z) - f_sum_other_magnitude / par.Ntot);
+        }
+
+        sigma_other /= par.Ntot;
+        sigma_other = sqrt(sigma_other);
+
+        char fileName[64];
+        sprintf(fileName, "forces%d.dat", tr);
+        FILE* forceFile = fopen(fileName, "a");
+
+        //printf("Av/dev_lj/other:\t%f\t%f\t\t\t%f\t%f\n", f_sum_lj_magnitude / par.Ntot, sigma_lj, f_sum_other_magnitude / par.Ntot, sigma_other);
+        fprintf(forceFile, "\t%f\t%f\t\t\t%f\t%f\n", f_sum_lj_magnitude / par.Ntot, sigma_lj, f_sum_other_magnitude / par.Ntot, sigma_other);
+        fclose(forceFile);
     }
-
-    for (int i = 0; i < par.Ntot; i++) {
-        sigma_lj += (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot) * (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot);
-    }
-    sigma_lj /= par.Ntot;
-    sigma_lj = sqrt(sigma_lj);
-
-    for(int i = 0; i < par.Ntot; i++)
-    {
-        f_sum_other_magnitude += sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z);
-    }
-
-    for (int i = 0; i < par.Ntot; i++) {
-        sigma_other += (sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z) - f_sum_other_magnitude / par.Ntot) * (sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z) - f_sum_other_magnitude / par.Ntot);
-    }
-    sigma_other /= par.Ntot;
-    sigma_other = sqrt(sigma_other);
-
-
-
-
-
-    printf("Av/dev:\t%f\t%f\t\t\t%f\t%f\n", f_sum_lj_magnitude / par.Ntot, sigma_lj, f_sum_other_magnitude / par.Ntot, sigma_other);
-  
 }
 
 void OutputSumForce(){
-    Coord f_sum;
-    f_sum.x = 0; f_sum.y = 0; f_sum.z = 0;
-    for(int i = 0; i < par.Ntot; i++)
-    {
-        f_sum.x += f[i].x;
-        f_sum.y += f[i].y;
-        f_sum.z += f[i].z;
-    }
-    printf("SF for 1st traj %.16f\n", sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
+    for(int tr = 0; tr < par.Ntr; tr++){
+        Coord f_sum;
+        f_sum.x = 0; f_sum.y = 0; f_sum.z = 0;
+        for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
+            f_sum.x += f[i].x;
+            f_sum.y += f[i].y;
+            f_sum.z += f[i].z;
+        }
+        printf("SF for %d traj %.16f\n", tr, sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
+    } 
 }
 
 void initParameters(int argc, char* argv[]){
@@ -240,10 +246,10 @@ void initParameters(int argc, char* argv[]){
     par.steps = getLongIntegerParameter(PARAMETER_NUMSTEPS,-1);
     par.stride = getLongIntegerParameter(PARAMETER_STRIDE,-1);
 
-#ifdef LJ_on
+//#ifdef LJ_on
     par.ljpairscutoff = getFloatParameter(PARAMETER_LJPAIRSCUTOFF);
     par.ljpairsupdatefreq = getIntegerParameter(PARAMETER_LJPAIRSUPDATEFREQ);
-#endif
+//#endif
 
     getMaskedParameter(par.coordFilename_ang, PARAMETER_COORD_FILE_ANG);
     getMaskedParameter(par.coordFilename_xyz, PARAMETER_COORD_FILE_XYZ);
@@ -762,8 +768,8 @@ void OutputAllEnergies(long long int step){
         char fileName[64];
         sprintf(fileName, "energies%d.dat", tr);
         FILE* energyFile = fopen(fileName, "a");
-        printf("ENERGIES[%d] harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", tr, 
-            fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
+        //printf("ENERGIES[%d] harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", tr, 
+        //    fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
 
         fprintf(energyFile, "%lld\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\n",
          step, fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
