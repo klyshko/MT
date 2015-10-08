@@ -26,12 +26,20 @@ option(WITH_MPI "Build with MPI support." OFF)
 option(REPULSIVE "Turn on repulsive potential." OFF)
 option(ASSEMBLY "Turn on assembly mode." OFF)
 option(AVERAGE_LJ "Output average LJ force and st deviation" OFF)
+option(REGULARIZATION "Regularization of LJ force. Making potential finite" OFF)
 
 if(${WITH_MPI})
 	find_package(MPI REQUIRED)
 	include_directories(${MPI_INCLUDE_PATH})
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_MPI")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_MPI")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D USE_MPI")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D USE_MPI")
+endif()
+
+if(${REGULARIZATION})
+    find_package(MPI REQUIRED)
+    include_directories(${MPI_INCLUDE_PATH})
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D REGULARIZATION")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D REGULARIZATION")
 endif()
 										
 

@@ -458,15 +458,17 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 			if( dr < lj_cutoff )
             {	
             	real df = 6/pow(dr,8);
-            	
-            	/*
-            	if (!isfinite(df)){
-            		df = 99999.0;	
+
+            #ifdef REGULARIZATION
+            	if (c_par.ljscale * c_par.ljsigma6 * df * dr > c_par.gammaR * r_mon / c_par.dt ){
+            		df = c_par.gammaR * r_mon / (c_par.dt * dr * c_par.ljscale * c_par.ljsigma6);	
             	} 
-				*/
+			#endif	
+            	
             	fi.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
 				fi.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
 				fi.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z); 
+
 			#ifdef AVERAGE_LJ
 				flj.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
 				flj.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
