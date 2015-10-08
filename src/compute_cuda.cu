@@ -49,7 +49,7 @@ __device__ real barr(real a, real r, real w, real x){
 #endif
 
 
-__global__ void compute_kernel(const Coord* d_r, Coord* d_f){//){
+__global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord* d_fother){//){
 	const int p = blockIdx.x*blockDim.x + threadIdx.x;
 	const int ind = p%c_par.Ntot;
 	const int traj = p/c_par.Ntot;
@@ -76,15 +76,16 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){//){
 
 	if(ind < c_par.Ntot && traj < c_par.Ntr){
 		ri = d_r[p];
+		xi = ri.x;
+		yi = ri.y;
+		zi = ri.z; 
 		cos_fii = cosf(ri.fi); 
 		sin_fii = sinf(ri.fi);
 		cos_psii = cosf(ri.psi);
 		sin_psii = sinf(ri.psi);
 		cos_thetai = cosf(ri.theta);
 		sin_thetai = sinf(ri.theta);
-		xi = ri.x;
-		yi = ri.y;
-		zi = ri.z;
+		
 		// harmonic
 		for(int k = 0; k < c_top.harmonicCount[ind]; k++){
 			j = c_top.harmonic[c_top.maxHarmonicPerMonomer*ind+k];
@@ -149,12 +150,12 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){//){
 					R_MON* (-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj))*(-cos_fii*cos_psii - sin_fii*sin_psii*sin_thetai));
 
 
-			fi.x     += -c_par.C * dr * gradx;
-			fi.y     += -c_par.C * dr * grady;
-			fi.z     += -c_par.C * dr * gradz;
-			fi.fi    += -c_par.C * dr * gradfi;
-			fi.psi   += -c_par.C * dr * gradpsi;
-			fi.theta += -c_par.C * dr * gradtheta;
+			fi.x     += -c_par.C * gradx;
+			fi.y     += -c_par.C * grady;
+			fi.z     += -c_par.C * gradz;
+			fi.fi    += -c_par.C * gradfi;
+			fi.psi   += -c_par.C * gradpsi;
+			fi.theta += -c_par.C * gradtheta;
 		
 		
             if(dr < ANGLE_CUTOFF )
@@ -241,11 +242,13 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){//){
 
 
 #if defined(MORSE)
-            dUdr = dmorse(c_par.D_long, c_par.A_long, dr);
+			if (dr == 0) dUdr = 0.0;
+			else dUdr = dmorse(c_par.D_long, c_par.A_long, dr) / dr;
 #endif
 
 #if defined(BARR)
-            dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr);
+			if (dr != 0) 
+            dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr) / dr;
 #endif
         
 			fi.x     += -dUdr*gradx;
@@ -415,17 +418,19 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){//){
 
 
 #if defined(MORSE)
-				if (c_top.mon_type[ind] != c_top.mon_type[j]) {
-					dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr);
+				if (dr == 0) dUdr = 0.0;
+				else if (c_top.mon_type[ind] != c_top.mon_type[j]) {
+					dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr) / dr;
 				}
 	            else {
-	            	dUdr = dmorse(c_par.D_lat, c_par.A_lat, dr);
+	            	dUdr = dmorse(c_par.D_lat, c_par.A_lat, dr) / dr;
 	            }
 #endif	            
 
 #if defined(BARR)
-	            dUdr += dbarr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr);
-#endif		
+			if (dr != 0) 
+            dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr) / dr;
+#endif
 
 				fi.x     += -dUdr*gradx;
 				fi.y     += -dUdr*grady;
@@ -580,7 +585,7 @@ __global__ void pairs_kernel(const Coord* d_r){
 	    float curMinDistArr[2] = {PAIR_CUTOFF, PAIR_CUTOFF};
 
 	    for(int j = 0; j < c_par.Ntot; j++){
-	        if (i != j) {
+	        if (i != j && c_top.mon_type[i] == c_top.mon_type[j]) {
 	        	rj = d_r[j + traj * c_par.Ntot];
 	            xj = rj.x;    
 	            yj = rj.y;    
@@ -965,6 +970,12 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
             ri.x = rcosd * cosf(a);
             ri.y = rcosd * sinf(a);
 #endif
+            
+            ri.fi -= (2 * M_PI) * (int)(ri.fi / (2 * M_PI));
+            ri.psi -= (2 * M_PI) * (int)(ri.psi / (2 * M_PI));
+            ri.theta -= (2 * M_PI) * (int)(ri.theta / (2 * M_PI));
+            
+
 			d_r[p] = ri;
 		}
 		f.x = 0.0f;
@@ -977,14 +988,14 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 	}
 }
 
-void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
+void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies, Coord* flj, Coord* fother){
 
 	Coord* d_r;
 	Coord* d_f;
 	Topology topGPU;
 
-	//Coord* d_flj;
-	//Coord* d_fother;
+	Coord* d_flj;
+	Coord* d_fother;
 
 	cudaSetDevice(par.device);
 	checkCUDAError("device");
@@ -1002,6 +1013,14 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		f[i].x = 0.0f;
 		f[i].y = 0.0f;
 		f[i].z = 0.0f;
+	}
+
+	for(int i = 0; i < par.Ntot*par.Ntr; i++){
+		
+		r[i].fi -= (2 * M_PI) * (int)(r[i].fi / (2 * M_PI));
+        r[i].psi -= (2 * M_PI) * (int)(r[i].psi / (2 * M_PI));
+        r[i].theta -= (2 * M_PI) * (int)(r[i].theta / (2 * M_PI));
+        
 	}
 
 #ifdef AVERAGE_LJ
@@ -1110,17 +1129,16 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 			update(step);
 		}
 
-		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
+		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f, d_flj, d_fother);
 		checkCUDAError("compute_forces");
 
 #if defined (OUTPUT_FORCE)
-
 		cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
-	#ifdef AVERAGE_LJ
+#endif
+
+#ifdef AVERAGE_LJ
 		cudaMemcpy(flj, d_flj, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
 		cudaMemcpy(fother, d_fother, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
-	#endif
-
 #endif
 
 		integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);

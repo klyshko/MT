@@ -31,7 +31,7 @@ void OutputSumForce();
 void OutputForces();
 void average_LJ();
 
-extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
+extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies, Coord* flj, Coord* fother);
 
 Parameters par;
 Coord* r;
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]){
     fother = (Coord*)malloc(par.Ntot * par.Ntr * sizeof(Coord));
 #endif
 
-    compute(r, f, par, top, energies);
+    compute(r, f, par, top, energies, flj, fother);
     saveCoordPDB("result_xyz.pdb", "result_ang.pdb");
     
 #ifdef USE_MPI
@@ -152,10 +152,10 @@ void update(long long int step){
 #ifdef OUTPUT_FORCE
     OutputSumForce();
     //OutputForces();
-    #ifdef AVERAGE_LJ
-        average_LJ();
-    #endif
+#endif
 
+#ifdef AVERAGE_LJ
+    average_LJ();
 #endif
 
 #ifdef OUTPUT_EN
