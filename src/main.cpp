@@ -225,6 +225,54 @@ void OutputSumForce(){
     } 
 }
 
+void OutputAllEnergies(long long int step){
+
+    Energies* fullEnergy = (Energies*)malloc(par.Ntr * sizeof(Energies));
+
+    for (int tr = 0; tr < par.Ntr; tr++){
+        fullEnergy[tr].U_harm = 0;
+        fullEnergy[tr].U_long = 0;
+        fullEnergy[tr].U_lat = 0;
+        fullEnergy[tr].U_psi = 0;
+        fullEnergy[tr].U_fi = 0;
+        fullEnergy[tr].U_teta = 0;
+        fullEnergy[tr].U_lj = 0;
+
+        for (int i = 0; i < par.Ntot; i++){
+            fullEnergy[tr].U_harm += energies[i + par.Ntot * tr].U_harm;
+            fullEnergy[tr].U_long += energies[i + par.Ntot * tr].U_long;
+            fullEnergy[tr].U_lat += energies[i + par.Ntot * tr].U_lat;
+            fullEnergy[tr].U_psi += energies[i + par.Ntot * tr].U_psi;
+            fullEnergy[tr].U_fi += energies[i + par.Ntot * tr].U_fi;
+            fullEnergy[tr].U_teta += energies[i + par.Ntot * tr].U_teta;
+            fullEnergy[tr].U_lj += energies[i + par.Ntot * tr].U_lj;
+        }
+
+        if (!isfinite(fullEnergy[tr].U_harm) || !isfinite(fullEnergy[tr].U_long) || !isfinite(fullEnergy[tr].U_lat)) {
+            printf("Some energy in %d trajectory is NaN. NOT Exit program\n", tr);
+            //exit(0);
+        }
+        char fileName[64];
+        sprintf(fileName, "energies%d.dat", tr);
+        FILE* energyFile = fopen(fileName, "a");
+        //printf("ENERGIES[%d] harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", tr, 
+        //    fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
+
+        fprintf(energyFile, "%lld\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\n",
+         step, fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
+        fclose(energyFile);
+    }
+    
+}
+
+void OutputForces(){
+
+    for (int i = 0; i < par.Ntot * par.Ntr; i++){
+        printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
+    }
+    
+}
+
 void initParameters(int argc, char* argv[]){
 #ifdef CUDA
 #ifdef USE_MPI
@@ -738,53 +786,6 @@ void saveCoordDCD(){
     }
 }
 
-void OutputAllEnergies(long long int step){
-
-    Energies* fullEnergy = (Energies*)malloc(par.Ntr * sizeof(Energies));
-
-    for (int tr = 0; tr < par.Ntr; tr++){
-        fullEnergy[tr].U_harm = 0;
-        fullEnergy[tr].U_long = 0;
-        fullEnergy[tr].U_lat = 0;
-        fullEnergy[tr].U_psi = 0;
-        fullEnergy[tr].U_fi = 0;
-        fullEnergy[tr].U_teta = 0;
-        fullEnergy[tr].U_lj = 0;
-
-        for (int i = 0; i < par.Ntot; i++){
-            fullEnergy[tr].U_harm += energies[i + par.Ntot * tr].U_harm;
-            fullEnergy[tr].U_long += energies[i + par.Ntot * tr].U_long;
-            fullEnergy[tr].U_lat += energies[i + par.Ntot * tr].U_lat;
-            fullEnergy[tr].U_psi += energies[i + par.Ntot * tr].U_psi;
-            fullEnergy[tr].U_fi += energies[i + par.Ntot * tr].U_fi;
-            fullEnergy[tr].U_teta += energies[i + par.Ntot * tr].U_teta;
-            fullEnergy[tr].U_lj += energies[i + par.Ntot * tr].U_lj;
-        }
-
-        if (!isfinite(fullEnergy[tr].U_harm) || !isfinite(fullEnergy[tr].U_long) || !isfinite(fullEnergy[tr].U_lat)) {
-            printf("Some energy in %d trajectory is NaN. NOT Exit program\n", tr);
-            //exit(0);
-        }
-        char fileName[64];
-        sprintf(fileName, "energies%d.dat", tr);
-        FILE* energyFile = fopen(fileName, "a");
-        //printf("ENERGIES[%d] harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", tr, 
-        //    fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
-
-        fprintf(energyFile, "%lld\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\n",
-         step, fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
-        fclose(energyFile);
-    }
-    
-}
-
-void OutputForces(){
-
-    for (int i = 0; i < par.Ntot * par.Ntr; i++){
-        printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
-    }
-    
-}
 
 void ReadFromDCD(Parameters par, Topology top, char* dcdfilename_xyz, char* dcdfilename_ang)
 {
