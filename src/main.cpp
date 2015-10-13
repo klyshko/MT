@@ -405,7 +405,7 @@ void initParameters(int argc, char* argv[]){
     par.ljsigma6 = pow(getFloatParameter(PARAMETER_LJSIGMA),6);
 #endif
 
-#if defined(BOUNDARIES)
+#if defined(REPULSIVE)
     par.rep_h = getFloatParameter(REP_H);
     par.rep_r = getFloatParameter(REP_R);
     par.rep_eps = getFloatParameter(REP_EPS);    
