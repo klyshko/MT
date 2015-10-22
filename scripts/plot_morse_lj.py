@@ -35,7 +35,7 @@ lj_scale = float(config_get_replaced(p_, "LJScale"))
 lj_sigma = float(config_get_replaced(p_, "LJSigma"))
 
 
-t = arange(3.95, 5.0, 0.01)
+t = arange(3.93, 5.9, 0.01)
 
 matplotlib.pyplot.figure(num=None, figsize=(16, 12), dpi=300, facecolor='w', edgecolor='k')
 subplot(221)

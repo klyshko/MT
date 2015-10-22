@@ -171,14 +171,14 @@ void average_LJ(){
         Coord f_sum_lj;
         f_sum_lj.x = 0.0; f_sum_lj.y = 0.0; f_sum_lj.z = 0.0;
         float f_sum_lj_magnitude = 0.0;
-        float sigma_lj = 0;
+        float sigma_lj = 0.0;
 
         for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
             f_sum_lj_magnitude += sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z);
         }
 
         for (int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++) {
-            sigma_lj += (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot) * (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot);
+            sigma_lj += ( sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot) * (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot);
         }
 
         sigma_lj /= par.Ntot;
@@ -189,7 +189,7 @@ void average_LJ(){
         Coord f_sum_other;
         f_sum_other.x = 0.0; f_sum_other.y = 0.0; f_sum_other.z = 0.0;
         float f_sum_other_magnitude = 0.0;
-        float sigma_other = 0;
+        float sigma_other = 0.0;
 
         for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
             f_sum_other_magnitude += sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z);
@@ -360,7 +360,6 @@ void initParameters(int argc, char* argv[]){
     parseParametersFile(par.ffFilename, argc, argv);
 
 #if defined(MORSE)
-    par.C = getFloatParameter(PARAMETER_HARMONIC_C);
     par.A_long = getFloatParameter(A_LONG);
     par.A_lat  = getFloatParameter(A_LAT);
     par.D_long  = getFloatParameter(D_LONG);
@@ -379,8 +378,8 @@ void initParameters(int argc, char* argv[]){
     par.r0_lat = getFloatParameter(PARAMETER_LATERAL_R_0);
     par.d_lat = getFloatParameter(PARAMETER_LATERAL_D);
     */
-    printf("Specify potentials in ccmake .\n");
-    exit(0);
+    printf("No long/lat potentials. Continue to compute\n");
+    //exit(0);
 #endif
     
 #if defined(BARR)
@@ -392,7 +391,9 @@ void initParameters(int argc, char* argv[]){
     par.w_barr_lat = getFloatParameter(W_BARR_LAT)/( 2*(sqrt(-2*log(0.5))) );
 #endif
 
- //ANGLES_HARMONIC                                 
+ //ANGLES_HARMONIC  
+    par.C = getFloatParameter(PARAMETER_HARMONIC_C);
+
     par.B_fi = getFloatParameter(PARAMETER_BENDING_B_FI);
     par.B_psi = getFloatParameter(PARAMETER_BENDING_B_PSI);
     par.B_theta = getFloatParameter(PARAMETER_BENDING_B_THETA);

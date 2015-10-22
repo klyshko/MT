@@ -173,9 +173,12 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
                 }
             }
             
-		
 		}
+
 		
+		
+#if defined(MORSE)
+
 		for(int k = 0; k < c_top.longitudinalCount[ind + c_par.Ntot * traj]; k++){
 			j = c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + ind * c_top.maxLongitudinalPerMonomer + k];
 			if(j < 0){
@@ -241,10 +244,11 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 					R_MON* (-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj))*(-cos_fii*cos_psii - sin_fii*sin_psii*sin_thetai));
 
 
-#if defined(MORSE)
+
 			if (dr == 0) dUdr = 0.0;
 			else dUdr = dmorse(c_par.D_long, c_par.A_long, dr) / dr;
-#endif
+
+
 
 #if defined(BARR)
 			if (dr != 0) 
@@ -276,7 +280,9 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
             
 		}
 
-		
+#endif
+
+#if defined(MORSE)
 		for(int k = 0; k < c_top.lateralCount[ind + traj * c_par.Ntot]; k++){
 			j = c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + ind * c_top.maxLateralPerMonomer + k];//c_top.maxLateralPerMonomer*ind+k];
 			if (j != LARGENUMBER) {
@@ -417,7 +423,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 						 sin_fii*sin_psii*sin_thetai)));
 
 
-#if defined(MORSE)
+
 				if (dr == 0) dUdr = 0.0;
 				else if (c_top.mon_type[ind] != c_top.mon_type[j]) {
 					dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr) / dr;
@@ -425,12 +431,12 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 	            else {
 	            	dUdr = dmorse(c_par.D_lat, c_par.A_lat, dr) / dr;
 	            }
-#endif	            
+	            
 
-#if defined(BARR)
+	#if defined(BARR)
 			if (dr != 0) 
             dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr) / dr;
-#endif
+	#endif
 
 				fi.x     += -dUdr*gradx;
 				fi.y     += -dUdr*grady;
@@ -441,6 +447,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 			}
 
 		}
+#endif
 	
 #ifdef AVERAGE_LJ
 		fother.x = fi.x;
@@ -709,11 +716,9 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 				pow(-yi + yj -
 				R_MON * (-cos_psii * sin_fii + cos_fii * sin_psii * sin_thetai) -
 				R_MON * (-cos_psij * sin_fij + cos_fij * sin_psij * sin_thetaj),2));
-#ifdef SIGMOID
-            U_harm += c_par.A_xx + c_par.b_xx / (c_par.A_xx + exp(- c_par.c_xx * (dr - c_par.d_xx)));
-#else
+
 			U_harm += (c_par.C / 2) * pow(dr,2);
-#endif
+
             if(dr < ANGLE_CUTOFF){
                 if(R_MON > 0){
                     U_psi  	 += c_par.B_psi		/2	*	pow(rj.psi 		-	ri.psi 		- c_par.psi_0		,2);
@@ -728,7 +733,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
             }
 		}
 
-		
+#if defined(MORSE)		
 		for(int k = 0; k < c_top.longitudinalCount[ind + traj * c_par.Ntot]; k++){
 			j = c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + c_top.maxLongitudinalPerMonomer * ind + k];
 			if (j < 0) {
@@ -758,15 +763,14 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 				R_MON * (-cos_psij * sin_fij + cos_fij * sin_psij * sin_thetaj),2);
 			dr	= sqrt(dr2);
 
-#if defined(MORSE)
-            U_long += morse_en(c_par.D_long, c_par.A_long, dr);
-#else
-			U_long += (c_par.A_long*(c_par.b_long * dr2 * exp(-dr / c_par.r0_long) - c_par.c_long*exp(-dr2/(c_par.d_long*c_par.r0_long)))); 
-#endif
 
-#if defined(BARR)
+            U_long += morse_en(c_par.D_long, c_par.A_long, dr);
+			//U_long += (c_par.A_long*(c_par.b_long * dr2 * exp(-dr / c_par.r0_long) - c_par.c_long*exp(-dr2/(c_par.d_long*c_par.r0_long)))); 
+
+
+	#if defined(BARR)
             U_long += barr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr);
-#endif
+	#endif
 			if(dr < ANGLE_CUTOFF){
                 if(R_MON > 0){
                     U_psi  	 += c_par.B_psi		/2	*	pow(rj.psi 		-	ri.psi 		- c_par.psi_0		,2);
@@ -781,6 +785,8 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
             }
 		}
 
+#endif
+#if defined(MORSE)
 		for(int k = 0; k < c_top.lateralCount[ind + traj * c_par.Ntot]; k++){
 			j = c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + c_top.maxLateralPerMonomer * ind + k];
 			if (j == LARGENUMBER) {
@@ -832,21 +838,21 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 				zp1 * sin_psij * sin_thetaj),2));
 			dr2 = dr*dr;
 		
-#if defined(MORSE)
+
             if (c_top.mon_type[ind] != c_top.mon_type[j]) {
 				U_lat += morse_en(c_par.D_lat / 2, c_par.A_lat, dr); 	//dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr)/dr;
 			}
             else {
             	U_lat += morse_en(c_par.D_lat, c_par.A_lat, dr);
             }
-#else
-			U_lat += (c_par.A_lat * (c_par.b_lat * dr2 * exp(-dr / c_par.r0_lat) - c_par.c_lat * exp(-dr2 / ( c_par.d_lat * c_par.r0_lat))));
-#endif
+			//U_lat += (c_par.A_lat * (c_par.b_lat * dr2 * exp(-dr / c_par.r0_lat) - c_par.c_lat * exp(-dr2 / ( c_par.d_lat * c_par.r0_lat))));
 
-#if defined(BARR)
+
+	#if defined(BARR)
             U_lat += barr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr);
-#endif
+	#endif
 		}
+#endif
 	
 #ifdef LJ_on
 
