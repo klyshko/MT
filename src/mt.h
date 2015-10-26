@@ -23,6 +23,10 @@
 #define lj_cutoff (6.0)
 #define LARGENUMBER 999999
 
+#define PF_NUMBER 13
+#define ANG_THRES 0.15f
+#define R_THRES (r_mon * 0.8)
+
 #define Turn 13 //Monomers per turn(2PI) 
 
 #define real float

@@ -27,6 +27,7 @@ void AssemblyInit();
 void writeRestart(long long int step);
 void readRestart();
 void OutputAllEnergies(long long int step);
+void mt_length(long long int step);
 void OutputSumForce();
 void OutputForces();
 void average_LJ();
@@ -162,6 +163,9 @@ void update(long long int step){
     OutputAllEnergies(step);
 #endif
 
+#ifdef MT_LENGTH
+    mt_length(step);
+#endif
 }
 
 void average_LJ(){
@@ -832,4 +836,62 @@ void AssemblyInit()
     }
     top.maxLongitudinalPerMonomer = 1;
     top.maxLateralPerMonomer = 2;
+}
+
+void mt_length(long long int step){
+
+    for (int traj = 0; traj < par.Ntr; traj++){
+
+        int protofilamentsLength[PF_NUMBER] = {0,0,0,0,0,0,0,0,0,0,0,0,0};
+        for (int i = traj * par.Ntot; i < (traj + 1) * par.Ntot; i++) {
+
+            float rad = sqrt(r[i].x * r[i].x + r[i].y * r[i].y);
+            if ((rad < R_MT + R_THRES) && (rad > R_MT - R_THRES)) {
+            // detect particles inside microtubule   
+                for (int j = 0; j < PF_NUMBER; j++){
+
+                    float angle = j * 2 * M_PI / PF_NUMBER;
+                    float psi = 0.0;
+
+                    if (r[i].psi >= -ANG_THRES) {
+                        psi = r[i].psi;
+                    }
+                    else {
+                        psi = 2 * M_PI + r[i].psi;
+                    }
+
+                    if (psi < angle + ANG_THRES && psi > angle - ANG_THRES ) {
+
+                        if ( (r[i].theta < ANG_THRES && r[i].theta > -ANG_THRES) 
+                           ||    (( 2 * M_PI - fabs(r[i].theta)) < ANG_THRES &&  (2 * M_PI - fabs(r[i].theta)) > -ANG_THRES) ) {
+                            if (r[i].fi < ANG_THRES && r[i].fi > - ANG_THRES){
+                                protofilamentsLength[j]++;
+                                //count++;
+                                //printf("%d\t%f\t%f\t%f\t\t%f\t%f\t%f\t\t%d%s\t%d\t%d\n", j, r[i].x, r[i].y,r[i].z,r[i].fi,r[i].psi,r[i].theta, pdb.atoms[i].resid, pdb.atoms[i].name, count, count2);
+                                break;
+                            }
+                            
+                        }
+                    }
+
+                }
+            }
+        }
+        int sum = 0;
+        for (int i = 0; i < PF_NUMBER; i++){
+            //if (protofilamentsLength[i] % 2) protofilamentsLength[i]--;
+            //printf("PF[%d] = %d\n", i, protofilamentsLength[i]);
+            sum += protofilamentsLength[i];
+
+        }
+
+        char fileName[64];
+        sprintf(fileName, "mtlength%d.dat", traj);
+        FILE* mtLenFile = fopen(fileName, "a");
+        fprintf(mtLenFile, "%lld\t%d\t%f\n" , step, (sum / PF_NUMBER), (4 * sum / float(PF_NUMBER)));
+        fclose(mtLenFile);
+        printf("length = %d\n", sum / 13); 
+    }
+
+        
 }
