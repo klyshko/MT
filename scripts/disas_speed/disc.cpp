@@ -34,7 +34,7 @@ int main(int argc, char** argv){
 		dcdOpenRead(&dcd, argv[2]);
 		printf("%s\n", argv[2]);
 		dcdReadHeader(&dcd);
-		long int frames =0;
+		long int frames = 0;
 		long int frames_curled = 0;
 		bool start_curl_record = false;
 		dcd.frame.X = (float*)calloc(pdbdata.atomCount, sizeof(float));
@@ -48,6 +48,14 @@ int main(int argc, char** argv){
 		int pf_end_number[pf_number];
 		int curled_start[pf_number];
 		vector<int> curled_lenghts, hist;
+
+		FILE* lfile;
+
+		if( (argc==4) && (!strcmp(argv[3], "timeline"))){
+			char filename[128];
+			sprintf(filename, "%s.dat", argv[2]);
+			lfile = fopen(filename,"w");
+		}
 		do{
 			dcdReadFrame(&dcd); frames ++;
 			std::fill_n(chain_lenghts, pf_number, 0);
@@ -138,9 +146,11 @@ int main(int argc, char** argv){
 			{
 				float lt = 0;
 				for(int i=0; i < pf_number; i++) lt += (float)mt_end_number[i]/13.0;
-				printf("%ld %f\n", frames, 2*lt);
+				fprintf(lfile, "%ld %f\n", frames, 2*lt);
 			}
-		}while(!feof(dcd.file));
+		} while(!feof(dcd.file));
+
+		//fclose(lfile);
 		int mean = 0;
 		int mean_curled = 0;
 		for(int i=0; i< pf_number; i++)
