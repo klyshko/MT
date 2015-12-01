@@ -49,7 +49,12 @@ matplotlib.pyplot.figure(num=None, figsize=(16, 12), dpi=300, facecolor='w', edg
 subplot(221)
 title('Longitudinal')
 s1 = pot(D_long, A_long, a_long_b, r_long_b, w_long_b, lj_scale, lj_sigma, t)
-#ylim(-20,10)
+#addcode
+longfile = open("long.dat","w")
+for tt in t:
+    longfile.write("{}  {}\n".format(tt, pot(D_long, A_long, a_long_b, r_long_b, w_long_b, lj_scale, lj_sigma, tt)))
+longfile.close()
+#addcode
 plot(t, s1)
 grid()
 xlabel('distance, nm')
@@ -59,6 +64,12 @@ subplot(222)
 title('Lateral')
 s1 = pot(D_lat, A_lat, a_lat_b, r_lat_b, w_lat_b, lj_scale, lj_sigma, t)
 #ylim(-20,10)
+#addcode
+latfile = open("lat.dat","w")
+for tt in t:
+    latfile.write("{}  {}\n".format(tt, pot(D_lat, A_lat, a_lat_b, r_lat_b, w_lat_b, lj_scale, lj_sigma, tt)))
+latfile.close()
+#addcode
 plot(t, s1)
 grid()
 xlabel('distance, nm')

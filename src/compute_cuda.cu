@@ -978,11 +978,11 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
             ri.x = rcosd * cosf(a);
             ri.y = rcosd * sinf(a);
 #endif
-            
+            /*
             ri.fi -= (2 * M_PI) * (int)(ri.fi / (2 * M_PI));
-            ri.psi -= (2 * M_PI) * (int)(ri.psi / (2 * M_PI));
+            ri.psi -= (2 * M_PI) * (int)(ri.psi / (2 * M_PI));   //// FIX THIS SOOON!
             ri.theta -= (2 * M_PI) * (int)(ri.theta / (2 * M_PI));
-            
+            */
 
 			d_r[p] = ri;
 		}
