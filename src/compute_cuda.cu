@@ -17,6 +17,8 @@
 #define BLOCK_SIZE 32
 #define MAX_F 10.0
 
+#define FREEZE 0.33
+
 extern void update(long long int step);
 extern void UpdateLJPairs();
 extern void UpdatePairs();
@@ -924,8 +926,8 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 			ri.z += (c_par.dt/c_par.gammaR)*f.z + c_par.varR*rf_xyz.z;
 #ifndef REDUCE_TO_2D
             // Disallow rotations in all directions but theta
-//-----------			//ri.fi    += (c_par.dt/c_par.gammaTheta)*f.fi  + c_par.varTheta*rf_ang.x;
-			ri.psi   += (c_par.dt/c_par.gammaTheta)*f.psi + c_par.varTheta*rf_ang.y;
+			ri.fi    += (c_par.dt/c_par.gammaTheta)*f.fi  + (c_par.varTheta * FREEZE)*rf_ang.x;
+			ri.psi   += (c_par.dt/c_par.gammaTheta)*f.psi + (c_par.varTheta * FREEZE)*rf_ang.y;
 #endif
 			ri.theta += (c_par.dt/c_par.gammaTheta)*f.theta + c_par.varTheta*rf_ang.z;
 #ifdef REDUCE_TO_2D
@@ -985,6 +987,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		f[i].z = 0.0f;
 	}
 
+/*
 	for(int i = 0; i < par.Ntot*par.Ntr; i++){
 		
 		r[i].fi -= (2 * M_PI) * (int)(r[i].fi / (2 * M_PI));
@@ -992,6 +995,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
         r[i].theta -= (2 * M_PI) * (int)(r[i].theta / (2 * M_PI));
         
 	}
+*/
 
 #ifdef AVERAGE_LJ
 	cudaMalloc((void**)&d_flj, par.Ntot*par.Ntr*sizeof(Coord));
