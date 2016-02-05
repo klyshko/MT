@@ -30,18 +30,13 @@ void OutputAllEnergies(long long int step);
 void mt_length(long long int step);
 void OutputSumForce();
 void OutputForces();
-void average_LJ();
 
-extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies, Coord* flj, Coord* fother);
+extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
 
 Parameters par;
 Coord* r;
 Coord* v;
 Coord* f;
-
-Coord* flj;
-Coord* fother;
-
 
 Topology top;
 Energies* energies;
@@ -108,13 +103,7 @@ int main(int argc, char *argv[]){
     energies = (Energies*)malloc(par.Ntot * par.Ntr * sizeof(Energies));
 #endif
 
-
-#ifdef AVERAGE_LJ
-    flj = (Coord*)malloc(par.Ntot * par.Ntr * sizeof(Coord));
-    fother = (Coord*)malloc(par.Ntot * par.Ntr * sizeof(Coord));
-#endif
-
-    compute(r, f, par, top, energies, flj, fother);
+    compute(r, f, par, top, energies);
     saveCoordPDB("result_xyz.pdb", "result_ang.pdb");
     
 #ifdef USE_MPI
@@ -122,10 +111,7 @@ int main(int argc, char *argv[]){
         MPI::Finalize();
 #endif
 
-#ifdef AVERAGE_LJ
-    free(flj);
-    free(fother);
-#endif
+
     free(r);
     free(f);
     free(v);
@@ -155,10 +141,6 @@ void update(long long int step){
     //OutputForces();
 #endif
 
-#ifdef AVERAGE_LJ
-    average_LJ();
-#endif
-
 #ifdef OUTPUT_EN
     OutputAllEnergies(step);
 #endif
@@ -166,54 +148,6 @@ void update(long long int step){
 #ifdef MT_LENGTH
     mt_length(step);
 #endif
-}
-
-void average_LJ(){
-
-    for (int tr = 0; tr < par.Ntr; tr++){
-
-        Coord f_sum_lj;
-        f_sum_lj.x = 0.0; f_sum_lj.y = 0.0; f_sum_lj.z = 0.0;
-        float f_sum_lj_magnitude = 0.0;
-        float sigma_lj = 0.0;
-
-        for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
-            f_sum_lj_magnitude += sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z);
-        }
-
-        for (int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++) {
-            sigma_lj += ( sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot) * (sqrt(flj[i].x * flj[i].x + flj[i].y * flj[i].y + flj[i].z * flj[i].z) - f_sum_lj_magnitude / par.Ntot);
-        }
-
-        sigma_lj /= par.Ntot;
-        sigma_lj = sqrt(sigma_lj);
-
-
-
-        Coord f_sum_other;
-        f_sum_other.x = 0.0; f_sum_other.y = 0.0; f_sum_other.z = 0.0;
-        float f_sum_other_magnitude = 0.0;
-        float sigma_other = 0.0;
-
-        for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
-            f_sum_other_magnitude += sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z);
-        }
-
-        for (int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++) {
-            sigma_other += (sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z) - f_sum_other_magnitude / par.Ntot) * (sqrt(fother[i].x * fother[i].x + fother[i].y * fother[i].y + fother[i].z * fother[i].z) - f_sum_other_magnitude / par.Ntot);
-        }
-
-        sigma_other /= par.Ntot;
-        sigma_other = sqrt(sigma_other);
-
-        char fileName[64];
-        sprintf(fileName, "forces%d.dat", tr);
-        FILE* forceFile = fopen(fileName, "a");
-
-        //printf("Av/dev_lj/other:\t%f\t%f\t\t\t%f\t%f\n", f_sum_lj_magnitude / par.Ntot, sigma_lj, f_sum_other_magnitude / par.Ntot, sigma_other);
-        fprintf(forceFile, "\t%f\t%f\t\t\t%f\t%f\n", f_sum_lj_magnitude / par.Ntot, sigma_lj, f_sum_other_magnitude / par.Ntot, sigma_other);
-        fclose(forceFile);
-    }
 }
 
 void OutputSumForce(){

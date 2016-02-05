@@ -17,7 +17,7 @@
 #define BLOCK_SIZE 32
 #define MAX_F 10.0
 
-#define FREEZE 0.33
+#define FREEZE 0.0
 
 extern void update(long long int step);
 extern void UpdateLJPairs();
@@ -51,7 +51,7 @@ __device__ real barr(real a, real r, real w, real x){
 #endif
 
 
-__global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord* d_fother){//){
+__global__ void compute_kernel(const Coord* d_r, Coord* d_f){//){
 	const int p = blockIdx.x*blockDim.x + threadIdx.x;
 	const int ind = p%c_par.Ntot;
 	const int traj = p/c_par.Ntot;
@@ -61,12 +61,8 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 	real xi, xj, yi, yj, zi, zj;
 	real dUdr, dr, gradx, grady, gradz, gradfi, gradpsi, gradtheta;
 	int j;
+	real psiji, thetaji, fiji;
 	Coord ri, rj, fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
-
-#ifdef AVERAGE_LJ	
-	Coord flj = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
-	Coord fother = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
-#endif	
 
 	real xp1 = xp1_def;
 	real yp1 = yp1_def;
@@ -162,8 +158,26 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 		
             if(dr < ANGLE_CUTOFF )
             {
+            	psiji -= 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
+                //psiij = - psiji;
+            	thetaji -= 2 * M_PI * (int)((rj.theta - ri.theta)/(2 * M_PI));
+                //thetaij = -thetaji;
+              	fiji -= 2 * M_PI * (int)((rj.fi - ri.fi)/(2 * M_PI));
+                //fiij = -fiji;
+                 if(R_MON > 0){
 
+                    fi.psi   += c_par.B_psi		*	(psiji 		- c_par.psi_0	);
+                    fi.fi	 += c_par.B_fi		*	(fiji 		- c_par.fi_0	);
+                    fi.theta += c_par.B_theta	*	(thetaji 	- c_par.theta_0	);
+                }
+                else{
+                    fi.psi   -= c_par.B_psi		*	(-psiji	- c_par.psi_0	);
+                    fi.fi	 -= c_par.B_fi		*	(-fiji 		- c_par.fi_0	);
+                    fi.theta -= c_par.B_theta	*	(-thetaji 	- c_par.theta_0	);
+                }
+              	/*
                 if(R_MON > 0){
+
                     fi.psi   += c_par.B_psi		*	(rj.psi 	-	ri.psi 		- c_par.psi_0	);
                     fi.fi	 += c_par.B_fi		*	(rj.fi 		-	ri.fi 		- c_par.fi_0	);
                     fi.theta += c_par.B_theta	*	(rj.theta 	- 	ri.theta 	- c_par.theta_0	);
@@ -173,6 +187,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
                     fi.fi	 -= c_par.B_fi		*	(ri.fi 		- 	rj.fi 		- c_par.fi_0	);
                     fi.theta -= c_par.B_theta	*	(ri.theta 	- 	rj.theta 	- c_par.theta_0	);
                 }
+                */
             }
             
 		}
@@ -265,19 +280,38 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 			fi.theta += -dUdr*gradtheta;
 			
 			
-            if(dr < ANGLE_CUTOFF)
+            if(dr < ANGLE_CUTOFF )
             {
-                if(R_MON > 0){
-                    fi.psi   += c_par.B_psi		*	(rj.psi 	- ri.psi 	- c_par.psi_0	);
-                    fi.fi	 += c_par.B_fi		*	(rj.fi 		- ri.fi 	- c_par.fi_0	);
-                    fi.theta += c_par.B_theta	*	(rj.theta 	- ri.theta 	- c_par.theta_0	);
+            	psiji -= 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
+                //psiij = - psiji;
+            	thetaji -= 2 * M_PI * (int)((rj.theta - ri.theta)/(2 * M_PI));
+                //thetaij = -thetaji;
+              	fiji -= 2 * M_PI * (int)((rj.fi - ri.fi)/(2 * M_PI));
+                //fiij = -fiji;
+                 if(R_MON > 0){
 
+                    fi.psi   += c_par.B_psi		*	(psiji 		- c_par.psi_0	);
+                    fi.fi	 += c_par.B_fi		*	(fiji 		- c_par.fi_0	);
+                    fi.theta += c_par.B_theta	*	(thetaji 	- c_par.theta_0	);
                 }
                 else{
-                    fi.psi   -= c_par.B_psi		*	(ri.psi 	- rj.psi 	- c_par.psi_0	);
-                    fi.fi	 -= c_par.B_fi		*	(ri.fi 		- rj.fi 	- c_par.fi_0	);
-                    fi.theta -= c_par.B_theta	*	(ri.theta 	- rj.theta 	- c_par.theta_0	);
+                    fi.psi   -= c_par.B_psi		*	(-psiji	- c_par.psi_0	);
+                    fi.fi	 -= c_par.B_fi		*	(-fiji 		- c_par.fi_0	);
+                    fi.theta -= c_par.B_theta	*	(-thetaji 	- c_par.theta_0	);
                 }
+              	/*
+                if(R_MON > 0){
+
+                    fi.psi   += c_par.B_psi		*	(rj.psi 	-	ri.psi 		- c_par.psi_0	);
+                    fi.fi	 += c_par.B_fi		*	(rj.fi 		-	ri.fi 		- c_par.fi_0	);
+                    fi.theta += c_par.B_theta	*	(rj.theta 	- 	ri.theta 	- c_par.theta_0	);
+                }
+                else{
+                    fi.psi   -= c_par.B_psi		*	(ri.psi 	- 	rj.psi 		- c_par.psi_0	);
+                    fi.fi	 -= c_par.B_fi		*	(ri.fi 		- 	rj.fi 		- c_par.fi_0	);
+                    fi.theta -= c_par.B_theta	*	(ri.theta 	- 	rj.theta 	- c_par.theta_0	);
+                }
+                */
             }
             
 		}
@@ -450,12 +484,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 
 		}
 #endif
-	
-#ifdef AVERAGE_LJ
-		fother.x = fi.x;
-		fother.y = fi.y;
-		fother.z = fi.z;
-#endif	
+
 
 #ifdef LJ_on
 		for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
@@ -477,12 +506,6 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
             	fi.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
 				fi.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
 				fi.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z); 
-
-			#ifdef AVERAGE_LJ
-				flj.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
-				flj.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
-				flj.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z); 
-			#endif
 
 			}
 		}
@@ -506,13 +529,6 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f, Coord* d_flj, Coord
 	        fi.x += ri.x * coeff ;
 	        fi.y += ri.y * coeff;
 	    }
-#endif
-
-#ifdef AVERAGE_LJ
-		d_fother[p] = fother;
-		d_flj[p] = flj;
-		flj = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
-		fother = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
 #endif
 
 		d_f[p] = fi;
@@ -666,6 +682,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 		  cos_psii, cos_psij, sin_psii, sin_psij,
 		  cos_thetai, cos_thetaj, sin_thetai, sin_thetaj;
 	real xi, xj, yi, yj, zi, zj;
+	real psiji, thetaji, fiji;
 	int j;
 	Coord ri, rj;
 	real dr, dr2;
@@ -722,6 +739,22 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 			U_harm += (c_par.C / 2) * pow(dr,2);
 
             if(dr < ANGLE_CUTOFF){
+
+            	psiji -= 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
+            	thetaji -= 2 * M_PI * (int)((rj.theta - ri.theta)/(2 * M_PI));
+              	fiji -= 2 * M_PI * (int)((rj.fi - ri.fi)/(2 * M_PI));
+
+              	if(R_MON > 0){
+                    U_psi  	 += c_par.B_psi		/2	*	pow(psiji 		- 	c_par.psi_0		,2);
+                    U_fi	 += c_par.B_fi		/2	*	pow(fiji 		-	ri.fi 		- c_par.fi_0		,2);
+                    U_teta	 += c_par.B_theta	/2	*	pow(thetaji 	- 	ri.theta 	- c_par.theta_0	,2);
+                }
+                else{
+                    U_psi  	 += c_par.B_psi	  	/2	*	pow(-psiji 		- c_par.psi_0		,2);
+                    U_fi	 += c_par.B_fi	  	/2	*	pow(-fiji 		- 	rj.fi 		- c_par.fi_0		,2);
+                    U_teta	 += c_par.B_theta	/2	*	pow(-thetaji 	- 	rj.theta 	- c_par.theta_0	,2);
+                }
+              	/*
                 if(R_MON > 0){
                     U_psi  	 += c_par.B_psi		/2	*	pow(rj.psi 		-	ri.psi 		- c_par.psi_0		,2);
                     U_fi	 += c_par.B_fi		/2	*	pow(rj.fi 		-	ri.fi 		- c_par.fi_0		,2);
@@ -732,6 +765,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
                     U_fi	 += c_par.B_fi	  	/2	*	pow(ri.fi 		- 	rj.fi 		- c_par.fi_0		,2);
                     U_teta	 += c_par.B_theta		/2	*	pow(ri.theta 	- 	rj.theta 	- c_par.theta_0	,2);
                 }
+                */
             }
 		}
 
@@ -774,6 +808,22 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
             U_long += barr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr);
 	#endif
 			if(dr < ANGLE_CUTOFF){
+
+            	psiji -= 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
+            	thetaji -= 2 * M_PI * (int)((rj.theta - ri.theta)/(2 * M_PI));
+              	fiji -= 2 * M_PI * (int)((rj.fi - ri.fi)/(2 * M_PI));
+
+              	if(R_MON > 0){
+                    U_psi  	 += c_par.B_psi		/2	*	pow(psiji 		- 	c_par.psi_0		,2);
+                    U_fi	 += c_par.B_fi		/2	*	pow(fiji 		-	ri.fi 		- c_par.fi_0		,2);
+                    U_teta	 += c_par.B_theta	/2	*	pow(thetaji 	- 	ri.theta 	- c_par.theta_0	,2);
+                }
+                else{
+                    U_psi  	 += c_par.B_psi	  	/2	*	pow(-psiji 		- c_par.psi_0		,2);
+                    U_fi	 += c_par.B_fi	  	/2	*	pow(-fiji 		- 	rj.fi 		- c_par.fi_0		,2);
+                    U_teta	 += c_par.B_theta	/2	*	pow(-thetaji 	- 	rj.theta 	- c_par.theta_0	,2);
+                }
+              	/*
                 if(R_MON > 0){
                     U_psi  	 += c_par.B_psi		/2	*	pow(rj.psi 		-	ri.psi 		- c_par.psi_0		,2);
                     U_fi	 += c_par.B_fi		/2	*	pow(rj.fi 		-	ri.fi 		- c_par.fi_0		,2);
@@ -784,6 +834,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
                     U_fi	 += c_par.B_fi	  	/2	*	pow(ri.fi 		- 	rj.fi 		- c_par.fi_0		,2);
                     U_teta	 += c_par.B_theta		/2	*	pow(ri.theta 	- 	rj.theta 	- c_par.theta_0	,2);
                 }
+                */
             }
 		}
 
@@ -960,14 +1011,11 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 	}
 }
 
-void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies, Coord* flj, Coord* fother){
+void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
 
 	Coord* d_r;
 	Coord* d_f;
 	Topology topGPU;
-
-	Coord* d_flj;
-	Coord* d_fother;
 
 	cudaSetDevice(par.device);
 	checkCUDAError("device");
@@ -997,12 +1045,6 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	}
 */
 
-#ifdef AVERAGE_LJ
-	cudaMalloc((void**)&d_flj, par.Ntot*par.Ntr*sizeof(Coord));
-	checkCUDAError("d_flj allocation");
-	cudaMalloc((void**)&d_fother, par.Ntot*par.Ntr*sizeof(Coord));
-	checkCUDAError("d_fother allocation");
-#endif
 
 	cudaMemcpy(d_f, f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
 	checkCUDAError("copy_forces");
@@ -1103,16 +1145,11 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 			update(step);
 		}
 
-		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f, d_flj, d_fother);
+		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
 		checkCUDAError("compute_forces");
 
 #if defined (OUTPUT_FORCE)
 		cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
-#endif
-
-#ifdef AVERAGE_LJ
-		cudaMemcpy(flj, d_flj, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
-		cudaMemcpy(fother, d_fother, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
 #endif
 
 		integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
@@ -1122,10 +1159,6 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	cudaFree(d_r);
 	cudaFree(d_f);
 
-#ifdef AVERAGE_LJ
-	cudaFree(d_flj);
-	cudaFree(d_fother);
-#endif
 	cudaFree(topGPU.harmonicCount);
 	cudaFree(topGPU.longitudinalCount);
 	cudaFree(topGPU.lateralCount);
