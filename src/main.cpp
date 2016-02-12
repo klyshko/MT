@@ -356,6 +356,8 @@ void initParameters(int argc, char* argv[]){
     par.gammaTheta = getFloatParameter(PARAMETER_GAMMA_THETA);
     par.varR = sqrtf(2.0f*KB*par.Temp*par.dt/par.gammaR);
     par.varTheta = sqrtf(2.0f*KB*par.Temp*par.dt/par.gammaTheta);
+    par.alpha = getFloatParameter(ALPHA_GEOMETRY);
+    par.freeze_temp = getFloatParameter(FREEZE_TEMP);
 }
 
 void readRestart()

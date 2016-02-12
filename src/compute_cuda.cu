@@ -17,9 +17,6 @@
 #define BLOCK_SIZE 32
 #define MAX_F 10.0
 
-#define FREEZE 0.1
-#define TSREDUCER 5  
-
 extern void update(long long int step);
 extern void UpdateLJPairs();
 extern void UpdatePairs();
@@ -986,8 +983,8 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 			ri.z += (c_par.dt/c_par.gammaR)*f.z + c_par.varR*rf_xyz.z;
 #ifndef REDUCE_TO_2D
             // Disallow rotations in all directions but theta
-			ri.fi    += (c_par.dt/(c_par.gammaTheta*TSREDUCER))*f.fi  + (c_par.varTheta * FREEZE)*rf_ang.x;
-			ri.psi   += (c_par.dt/(c_par.gammaTheta*TSREDUCER))*f.psi + (c_par.varTheta * FREEZE)*rf_ang.y;
+			ri.fi    += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.fi  + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.x;
+			ri.psi   += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.psi + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.y;
 #endif
 			ri.theta += (c_par.dt/c_par.gammaTheta)*f.theta + c_par.varTheta*rf_ang.z;
 #ifdef REDUCE_TO_2D
@@ -1038,16 +1035,6 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		f[i].y = 0.0f;
 		f[i].z = 0.0f;
 	}
-
-/*
-	for(int i = 0; i < par.Ntot*par.Ntr; i++){
-		
-		r[i].fi -= (2 * M_PI) * (int)(r[i].fi / (2 * M_PI));
-        r[i].psi -= (2 * M_PI) * (int)(r[i].psi / (2 * M_PI));
-        r[i].theta -= (2 * M_PI) * (int)(r[i].theta / (2 * M_PI));
-        
-	}
-*/
 
 
 	cudaMemcpy(d_f, f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);

@@ -200,7 +200,10 @@
 
 #define  REP_H    "rep_h"
 #define  REP_R    "rep_r"
-#define  REP_EPS    "rep_eps"
+#define  REP_EPS  "rep_eps"
+
+ #define ALPHA_GEOMETRY                         "alpha"
+ #define FREEZE_TEMP                            "freeze_temp"
 
 #define PARAMETER_GAMMA_R						"gammaR"
 #define PARAMETER_GAMMA_THETA					"gammaTheta"
@@ -222,6 +225,8 @@ typedef struct {
 	real gammaR;
 	real varTheta;
 	real gammaTheta;
+    real freeze_temp;
+    real alpha;
 	real dt;
 	int device;
 	long long int steps;
