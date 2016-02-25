@@ -3,6 +3,9 @@
  *
  *  Created on: 11.04.2012
  *      Author: zhmurov
+
+    Modified on: 02.01.2016
+         Author: klyshko
  */
 
 #include "mt.h"
@@ -30,6 +33,7 @@ void OutputAllEnergies(long long int step);
 void mt_length(long long int step);
 void OutputSumForce();
 void OutputForces();
+void initParameters(int argc, char* argv[]);
 
 extern void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
 
@@ -49,9 +53,8 @@ XYZ xyz;
 int mpi_dev_cur, mpi_rank, mpi_size;
 #endif
 
-void initParameters(int argc, char* argv[]);
-
 int main(int argc, char *argv[]){
+
 #ifdef USE_MPI
     MPI::Init(argc, argv);
     mpi_rank = MPI::COMM_WORLD.Get_rank();
@@ -150,66 +153,7 @@ void update(long long int step){
 #endif
 }
 
-void OutputSumForce(){
-    for(int tr = 0; tr < par.Ntr; tr++){
-        Coord f_sum;
-        f_sum.x = 0; f_sum.y = 0; f_sum.z = 0;
-        for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
-            f_sum.x += f[i].x;
-            f_sum.y += f[i].y;
-            f_sum.z += f[i].z;
-        }
-        printf("SF for %d traj %.16f\n", tr, sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
-    } 
-}
 
-void OutputAllEnergies(long long int step){
-
-    Energies* fullEnergy = (Energies*)malloc(par.Ntr * sizeof(Energies));
-
-    for (int tr = 0; tr < par.Ntr; tr++){
-        fullEnergy[tr].U_harm = 0;
-        fullEnergy[tr].U_long = 0;
-        fullEnergy[tr].U_lat = 0;
-        fullEnergy[tr].U_psi = 0;
-        fullEnergy[tr].U_fi = 0;
-        fullEnergy[tr].U_teta = 0;
-        fullEnergy[tr].U_lj = 0;
-
-        for (int i = 0; i < par.Ntot; i++){
-            fullEnergy[tr].U_harm += energies[i + par.Ntot * tr].U_harm;
-            fullEnergy[tr].U_long += energies[i + par.Ntot * tr].U_long;
-            fullEnergy[tr].U_lat += energies[i + par.Ntot * tr].U_lat;
-            fullEnergy[tr].U_psi += energies[i + par.Ntot * tr].U_psi;
-            fullEnergy[tr].U_fi += energies[i + par.Ntot * tr].U_fi;
-            fullEnergy[tr].U_teta += energies[i + par.Ntot * tr].U_teta;
-            fullEnergy[tr].U_lj += energies[i + par.Ntot * tr].U_lj;
-        }
-
-        if (!isfinite(fullEnergy[tr].U_harm) || !isfinite(fullEnergy[tr].U_long) || !isfinite(fullEnergy[tr].U_lat)) {
-            printf("Some energy in %d trajectory is NaN. NOT Exit program\n", tr);
-            //exit(0);
-        }
-        char fileName[64];
-        sprintf(fileName, "energies%d.dat", tr);
-        FILE* energyFile = fopen(fileName, "a");
-        //printf("ENERGIES[%d] harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", tr, 
-        //    fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
-
-        fprintf(energyFile, "%lld\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\n",
-         step, fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
-        fclose(energyFile);
-    }
-    
-}
-
-void OutputForces(){
-
-    for (int i = 0; i < par.Ntot * par.Ntr; i++){
-        printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
-    }
-    
-}
 
 void initParameters(int argc, char* argv[]){
 #ifdef CUDA
@@ -261,7 +205,7 @@ void initParameters(int argc, char* argv[]){
             DIE("Reading restartkey %s: unable to get firststep", &(par.restartkey));
         fclose(keyf);
     }   
-    read_PDB(par.coordFilename_xyz, par.coordFilename_ang);
+    read_PDB(par.coordFilename_xyz, par.coordFilename_ang);                                 ////// <----- read topology from pdb files
 
     par.dcdFilename_xyz = (char**)calloc(par.Ntr, sizeof(char*));
     par.dcdFilename_ang = (char**)calloc(par.Ntr, sizeof(char*));
@@ -360,65 +304,13 @@ void initParameters(int argc, char* argv[]){
     par.freeze_temp = getFloatParameter(FREEZE_TEMP);
 }
 
-void readRestart()
-{
-    for(int traj = 0; traj < par.Ntr; traj++)
-    {
-        readXYZ(par.restart_xyzFilename[traj], &xyz);
-        for(int i = 0; i < par.Ntot; i++)
-        {
-            r[i + par.Ntot*traj].x = xyz.atoms[i].x;
-            r[i + par.Ntot*traj].y = xyz.atoms[i].y;
-            r[i + par.Ntot*traj].z = xyz.atoms[i].z;
-        }
-        readXYZ(par.restart_angFilename[traj], &xyz);
-        for(int i = 0; i < par.Ntot; i++)
-        {
-            r[i + par.Ntot*traj].fi = xyz.atoms[i].x;
-            r[i + par.Ntot*traj].psi = xyz.atoms[i].y;
-            r[i + par.Ntot*traj].theta = xyz.atoms[i].z;
-        }
-    }
-    free(xyz.atoms);
-}
-
-void writeRestart(long long int step)
-{
-    xyz.atomCount = par.Ntot;
-    xyz.atoms = (XYZAtom*)calloc(xyz.atomCount, sizeof(XYZAtom));
-    for(int traj = 0; traj < par.Ntr; traj++)
-    {
-        for(int i = 0; i < par.Ntot; i++)
-        {
-            xyz.atoms[i].x = r[i + par.Ntot*traj].x;
-            xyz.atoms[i].y = r[i + par.Ntot*traj].y;
-            xyz.atoms[i].z = r[i + par.Ntot*traj].z;
-            xyz.atoms[i].name = pdb.atoms[i].name[0];
-        }
-        writeXYZ(par.restart_xyzFilename[traj], &xyz);
-        for(int i = 0; i < par.Ntot; i++)
-        {
-            xyz.atoms[i].x = r[i + par.Ntot*traj].fi;
-            xyz.atoms[i].y = r[i + par.Ntot*traj].psi;
-            xyz.atoms[i].z = r[i + par.Ntot*traj].theta;
-            xyz.atoms[i].name = pdb.atoms[i].name[0];
-        }
-        writeXYZ(par.restart_angFilename[traj], &xyz);
-    }
-    free(xyz.atoms);
-    FILE *keyf = safe_fopen(par.restartkey, "w");
-    if (fprintf(keyf,"%lld", step) == 0)
-        DIE("Reading restartkey %s: unable to write firststep", &(par.restartkey));
-    fclose(keyf);
-}
-
-
-
 void read_PDB(const char* filename_xyz, const char* filename_ang){
     int i, j;
     readPDB(filename_xyz, &pdb);
     printf("Building topology....\n");
+    
     par.Ntot = pdb.atomCount;
+    
     r = (Coord*)calloc(par.Ntot*par.Ntr, sizeof(Coord));
     f = (Coord*)calloc(par.Ntot*par.Ntr, sizeof(Coord));
 
@@ -428,12 +320,29 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
             top.mon_type[i] = 0;
         else if(pdb.atoms[i].name == "CB")
             top.mon_type[i] = 1;
-
     }
 
-#ifdef LJ_on
-    top.LJCount = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
-#endif
+     //initialising fixed atoms list
+    top.fixed = (bool*)calloc(par.Ntot, sizeof(bool));
+    for(i = 0; i < par.Ntot; i++){
+            if( pdb.atoms[i].resid <= par.fix)
+                    top.fixed[i] = true;
+            else
+                    top.fixed[i] = false;
+    }
+
+     //initialising extra atoms list
+    top.extra = (bool*)calloc(par.Ntot * par.Ntr, sizeof(bool));
+
+    for(int traj = 0; traj < par.Ntr; traj++){
+        for(i = 0; i < par.Ntot; i++){
+            if(pdb.atoms[i].chain == 'X')
+                    top.extra[i + traj*par.Ntot] = true;
+            else
+                    top.extra[i + traj*par.Ntot] = false;
+        }
+    }
+
     for(int traj = 0; traj < par.Ntr; traj++){
             for(i = 0; i < par.Ntot; i++){
                 r[i+traj*par.Ntot].x = pdb.atoms[i].x;
@@ -449,6 +358,10 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
                 r[i+traj*par.Ntot].theta = pdb_ang.atoms[i].z;
             }
     }
+
+#ifdef LJ_on
+    top.LJCount = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
+#endif
     top.harmonicCount = (int*)calloc(par.Ntot, sizeof(int));
     top.longitudinalCount = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
     top.lateralCount = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
@@ -677,84 +590,7 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
         }
     }
     
-    //todo initialising fixed atoms list
-    top.fixed = (bool*)calloc(par.Ntot, sizeof(bool));
-    for(i = 0; i < par.Ntot; i++){
-            if( pdb.atoms[i].resid <= par.fix )
-                    top.fixed[i] = true;
-            else
-                    top.fixed[i] = false;
-    }
     printf("done building topology without LJ.\n");
-}
-
-
-void saveCoordPDB(const char* pdbfilename_xyz, const char* pdbfilename_ang){
-    int i;
-    for(i = 0; i < par.Ntot; i++){
-        pdb.atoms[i].x = r[i].x;
-        pdb.atoms[i].y = r[i].y;
-        pdb.atoms[i].z = r[i].z;
-    }
-    writePDB(pdbfilename_xyz, &pdb);
-    for(i = 0; i < par.Ntot; i++){
-        pdb.atoms[i].x = r[i].fi;
-        pdb.atoms[i].y = r[i].psi;
-        pdb.atoms[i].z = r[i].theta;
-    }
-    writePDB(pdbfilename_ang, &pdb);
-}
-
-void saveCoordDCD(){
-    int i;
-    for(int j=0; j < par.Ntr; j++){
-        for(i = 0; i < par.Ntot; i++){
-            dcd.frame.X[i] = r[i+par.Ntot*j].x;
-            dcd.frame.Y[i] = r[i+par.Ntot*j].y;
-            dcd.frame.Z[i] = r[i+par.Ntot*j].z;
-        }
-        dcdOpenAppend(&dcd, par.dcdFilename_xyz[j]);
-        dcdWriteFrame(dcd);
-        dcdClose(dcd);
-        for(i = 0; i < par.Ntot; i++){
-            dcd.frame.X[i] = r[i+par.Ntot*j].fi;
-            dcd.frame.Y[i] = r[i+par.Ntot*j].psi;
-            dcd.frame.Z[i] = r[i+par.Ntot*j].theta;
-        }
-        dcdOpenAppend(&dcd, par.dcdFilename_ang[j]);
-        dcdWriteFrame(dcd);
-        dcdClose(dcd);
-    }
-}
-
-
-void ReadFromDCD(Parameters par, Topology top, char* dcdfilename_xyz, char* dcdfilename_ang)
-{
-
-    DCD dcd_xyz, dcd_ang;
-    dcd_xyz.frame.X = (float*)calloc(pdb.atomCount, sizeof(float));
-    dcd_xyz.frame.Y = (float*)calloc(pdb.atomCount, sizeof(float));
-    dcd_xyz.frame.Z = (float*)calloc(pdb.atomCount, sizeof(float));
-    dcd_ang.frame.X = (float*)calloc(pdb.atomCount, sizeof(float));
-    dcd_ang.frame.Y = (float*)calloc(pdb.atomCount, sizeof(float));
-    dcd_ang.frame.Z = (float*)calloc(pdb.atomCount, sizeof(float));
-    
-    dcdOpenRead(&dcd_xyz, dcdfilename_xyz);
-    dcdOpenRead(&dcd_ang, dcdfilename_ang);
-    dcdReadHeader(&dcd_xyz);
-    dcdReadHeader(&dcd_ang);
-    while( ( dcdReadFrame(&dcd_xyz) == 0 ) && ( dcdReadFrame(&dcd_ang) == 0 ) )
-    {
-        for(int i = 0; i < pdb.atomCount; i++)
-        {
-            r[i].x = dcd_xyz.frame.X[i];
-            r[i].y = dcd_xyz.frame.Y[i];
-            r[i].z = dcd_xyz.frame.Z[i];
-            r[i].fi    = dcd_ang.frame.X[i];
-            r[i].psi   = dcd_ang.frame.Y[i];
-            r[i].theta = dcd_ang.frame.Z[i];
-        }
-    }
 }
 
 void AssemblyInit()
@@ -827,7 +663,192 @@ void mt_length(long long int step){
         fprintf(mtLenFile, "%lld\t%d\t%f\n" , step, (sum / PF_NUMBER), (4 * sum / float(PF_NUMBER)));
         fclose(mtLenFile);
         printf("length = %d\n", sum / 13); 
-    }
+    }     
+}
 
-        
+void OutputSumForce(){
+    for(int tr = 0; tr < par.Ntr; tr++){
+        Coord f_sum;
+        f_sum.x = 0; f_sum.y = 0; f_sum.z = 0;
+        for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
+            f_sum.x += f[i].x;
+            f_sum.y += f[i].y;
+            f_sum.z += f[i].z;
+        }
+        printf("SF for %d traj %.16f\n", tr, sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
+    } 
+}
+
+void OutputAllEnergies(long long int step){
+
+    Energies* fullEnergy = (Energies*)malloc(par.Ntr * sizeof(Energies));
+
+    for (int tr = 0; tr < par.Ntr; tr++){
+        fullEnergy[tr].U_harm = 0;
+        fullEnergy[tr].U_long = 0;
+        fullEnergy[tr].U_lat = 0;
+        fullEnergy[tr].U_psi = 0;
+        fullEnergy[tr].U_fi = 0;
+        fullEnergy[tr].U_teta = 0;
+        fullEnergy[tr].U_lj = 0;
+
+        for (int i = 0; i < par.Ntot; i++){
+            fullEnergy[tr].U_harm += energies[i + par.Ntot * tr].U_harm;
+            fullEnergy[tr].U_long += energies[i + par.Ntot * tr].U_long;
+            fullEnergy[tr].U_lat += energies[i + par.Ntot * tr].U_lat;
+            fullEnergy[tr].U_psi += energies[i + par.Ntot * tr].U_psi;
+            fullEnergy[tr].U_fi += energies[i + par.Ntot * tr].U_fi;
+            fullEnergy[tr].U_teta += energies[i + par.Ntot * tr].U_teta;
+            fullEnergy[tr].U_lj += energies[i + par.Ntot * tr].U_lj;
+        }
+
+        if (!isfinite(fullEnergy[tr].U_harm) || !isfinite(fullEnergy[tr].U_long) || !isfinite(fullEnergy[tr].U_lat) || !isfinite(fullEnergy[tr].U_lj)) {
+            printf("Some energy in %d trajectory is NaN. NOT Exit program\n", tr);
+            //exit(0);
+        }
+        char fileName[64];
+        sprintf(fileName, "energies%d.dat", tr);
+        FILE* energyFile = fopen(fileName, "a");
+        //printf("ENERGIES[%d] harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", tr, 
+        //    fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
+
+        fprintf(energyFile, "%lld\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\n",
+         step, fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
+        fclose(energyFile);
+    }
+    
+}
+
+void OutputForces(){
+
+    for (int i = 0; i < par.Ntot * par.Ntr; i++){
+        printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
+    }
+    
+}
+
+
+
+void saveCoordPDB(const char* pdbfilename_xyz, const char* pdbfilename_ang){
+    int i;
+    for(i = 0; i < par.Ntot; i++){
+        pdb.atoms[i].x = r[i].x;
+        pdb.atoms[i].y = r[i].y;
+        pdb.atoms[i].z = r[i].z;
+    }
+    writePDB(pdbfilename_xyz, &pdb);
+    for(i = 0; i < par.Ntot; i++){
+        pdb.atoms[i].x = r[i].fi;
+        pdb.atoms[i].y = r[i].psi;
+        pdb.atoms[i].z = r[i].theta;
+    }
+    writePDB(pdbfilename_ang, &pdb);
+}
+
+void saveCoordDCD(){
+    int i;
+    for(int j=0; j < par.Ntr; j++){
+        for(i = 0; i < par.Ntot; i++){
+            dcd.frame.X[i] = r[i+par.Ntot*j].x;
+            dcd.frame.Y[i] = r[i+par.Ntot*j].y;
+            dcd.frame.Z[i] = r[i+par.Ntot*j].z;
+        }
+        dcdOpenAppend(&dcd, par.dcdFilename_xyz[j]);
+        dcdWriteFrame(dcd);
+        dcdClose(dcd);
+        for(i = 0; i < par.Ntot; i++){
+            dcd.frame.X[i] = r[i+par.Ntot*j].fi;
+            dcd.frame.Y[i] = r[i+par.Ntot*j].psi;
+            dcd.frame.Z[i] = r[i+par.Ntot*j].theta;
+        }
+        dcdOpenAppend(&dcd, par.dcdFilename_ang[j]);
+        dcdWriteFrame(dcd);
+        dcdClose(dcd);
+    }
+}
+
+
+
+///////////////// Very rarely used functions 
+
+
+void ReadFromDCD(Parameters par, Topology top, char* dcdfilename_xyz, char* dcdfilename_ang)
+{
+
+    DCD dcd_xyz, dcd_ang;
+    dcd_xyz.frame.X = (float*)calloc(pdb.atomCount, sizeof(float));
+    dcd_xyz.frame.Y = (float*)calloc(pdb.atomCount, sizeof(float));
+    dcd_xyz.frame.Z = (float*)calloc(pdb.atomCount, sizeof(float));
+    dcd_ang.frame.X = (float*)calloc(pdb.atomCount, sizeof(float));
+    dcd_ang.frame.Y = (float*)calloc(pdb.atomCount, sizeof(float));
+    dcd_ang.frame.Z = (float*)calloc(pdb.atomCount, sizeof(float));
+    
+    dcdOpenRead(&dcd_xyz, dcdfilename_xyz);
+    dcdOpenRead(&dcd_ang, dcdfilename_ang);
+    dcdReadHeader(&dcd_xyz);
+    dcdReadHeader(&dcd_ang);
+    while( ( dcdReadFrame(&dcd_xyz) == 0 ) && ( dcdReadFrame(&dcd_ang) == 0 ) )
+    {
+        for(int i = 0; i < pdb.atomCount; i++)
+        {
+            r[i].x = dcd_xyz.frame.X[i];
+            r[i].y = dcd_xyz.frame.Y[i];
+            r[i].z = dcd_xyz.frame.Z[i];
+            r[i].fi    = dcd_ang.frame.X[i];
+            r[i].psi   = dcd_ang.frame.Y[i];
+            r[i].theta = dcd_ang.frame.Z[i];
+        }
+    }
+}
+
+void readRestart()
+{
+    for(int traj = 0; traj < par.Ntr; traj++)
+    {
+        readXYZ(par.restart_xyzFilename[traj], &xyz);
+        for(int i = 0; i < par.Ntot; i++)
+        {
+            r[i + par.Ntot*traj].x = xyz.atoms[i].x;
+            r[i + par.Ntot*traj].y = xyz.atoms[i].y;
+            r[i + par.Ntot*traj].z = xyz.atoms[i].z;
+        }
+        readXYZ(par.restart_angFilename[traj], &xyz);
+        for(int i = 0; i < par.Ntot; i++)
+        {
+            r[i + par.Ntot*traj].fi = xyz.atoms[i].x;
+            r[i + par.Ntot*traj].psi = xyz.atoms[i].y;
+            r[i + par.Ntot*traj].theta = xyz.atoms[i].z;
+        }
+    }
+    free(xyz.atoms);
+}
+
+void writeRestart(long long int step)
+{
+    xyz.atomCount = par.Ntot;
+    xyz.atoms = (XYZAtom*)calloc(xyz.atomCount, sizeof(XYZAtom));
+    for(int traj = 0; traj < par.Ntr; traj++)
+    {
+        for(int i = 0; i < par.Ntot; i++)
+        {
+            xyz.atoms[i].x = r[i + par.Ntot*traj].x;
+            xyz.atoms[i].y = r[i + par.Ntot*traj].y;
+            xyz.atoms[i].z = r[i + par.Ntot*traj].z;
+            xyz.atoms[i].name = pdb.atoms[i].name[0];
+        }
+        writeXYZ(par.restart_xyzFilename[traj], &xyz);
+        for(int i = 0; i < par.Ntot; i++)
+        {
+            xyz.atoms[i].x = r[i + par.Ntot*traj].fi;
+            xyz.atoms[i].y = r[i + par.Ntot*traj].psi;
+            xyz.atoms[i].z = r[i + par.Ntot*traj].theta;
+            xyz.atoms[i].name = pdb.atoms[i].name[0];
+        }
+        writeXYZ(par.restart_angFilename[traj], &xyz);
+    }
+    free(xyz.atoms);
+    FILE *keyf = safe_fopen(par.restartkey, "w");
+    if (fprintf(keyf,"%lld", step) == 0)
+        DIE("Reading restartkey %s: unable to write firststep", &(par.restartkey));
+    fclose(keyf);
 }

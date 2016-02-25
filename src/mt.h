@@ -78,6 +78,7 @@ typedef struct{
         int* LJ;
 		int maxLJPerMonomer;
 		bool* fixed;
+		bool* extra;
         int* mon_type;
 } Topology;
 
