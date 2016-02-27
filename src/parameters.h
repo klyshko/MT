@@ -204,6 +204,7 @@
 
  #define ALPHA_GEOMETRY                         "alpha"
  #define FREEZE_TEMP                            "freeze_temp"
+ #define CONC                                   "conc"
 
 #define PARAMETER_GAMMA_R						"gammaR"
 #define PARAMETER_GAMMA_THETA					"gammaTheta"
@@ -226,6 +227,7 @@ typedef struct {
 	real varTheta;
 	real gammaTheta;
     real freeze_temp;
+    real conc;          //[muM/L]
     real alpha;
 	real dt;
 	int device;
@@ -360,6 +362,7 @@ typedef struct {
     real rep_h;
     real rep_r;
     real rep_eps;
+    float zs[32];
 #endif
 #if defined(BARR)
     real a_barr_long;

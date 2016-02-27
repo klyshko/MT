@@ -16,7 +16,9 @@
 
 #define BLOCK_SIZE 32
 
-extern void update(long long int step);
+extern void update(long long int step, int* mt_len);
+extern void change_conc(int* delta, int* mt_len);
+extern void mt_length(long long int step, int* mt_len);
 extern void UpdateLJPairs();
 extern void UpdatePairs();
 
@@ -64,7 +66,9 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 	if(ind < c_par.Ntot && traj < c_par.Ntr){
 		
-		if (!c_top.extra[ind + traj * par.Ntot]){
+		if (!c_top.extra[ind + traj * c_par.Ntot]){
+
+			
 			ri = d_r[p];
 			xi = ri.x;
 			yi = ri.y;
@@ -168,27 +172,16 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	                    fi.fi	 -= c_par.B_fi		*	(fiij 		- c_par.fi_0	);
 	                    fi.theta -= c_par.B_theta	*	(thetaij 	- c_par.theta_0	);
 	                }
-	              	/*
-	                if(R_MON > 0){
-
-	                    fi.psi   += c_par.B_psi		*	(rj.psi 	-	ri.psi 		- c_par.psi_0	);
-	                    fi.fi	 += c_par.B_fi		*	(rj.fi 		-	ri.fi 		- c_par.fi_0	);
-	                    fi.theta += c_par.B_theta	*	(rj.theta 	- 	ri.theta 	- c_par.theta_0	);
-	                }
-	                else{
-	                    fi.psi   -= c_par.B_psi		*	(ri.psi 	- 	rj.psi 		- c_par.psi_0	);
-	                    fi.fi	 -= c_par.B_fi		*	(ri.fi 		- 	rj.fi 		- c_par.fi_0	);
-	                    fi.theta -= c_par.B_theta	*	(ri.theta 	- 	rj.theta 	- c_par.theta_0	);
-	                }
-	                */
+	              	
 	            }
 	            
 			}
-
+			
+			
 			
 			
 #if defined(MORSE)
-
+			
 			for(int k = 0; k < c_top.longitudinalCount[ind + c_par.Ntot * traj]; k++){
 				j = c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + ind * c_top.maxLongitudinalPerMonomer + k];
 				if(j < 0){
@@ -304,11 +297,11 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	                    fi.psi   -= c_par.B_psi		*	(ri.psi 	- 	rj.psi 		- c_par.psi_0	);
 	                    fi.fi	 -= c_par.B_fi		*	(ri.fi 		- 	rj.fi 		- c_par.fi_0	);
 	                    fi.theta -= c_par.B_theta	*	(ri.theta 	- 	rj.theta 	- c_par.theta_0	);
-	                }
-	                */
+	                }*/
+	                
 	            }
 	            
-			}
+			} 
 
 #endif
 
@@ -481,6 +474,8 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 
 #ifdef LJ_on
+
+						
 			for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
 
 				j = c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * traj + ind * c_top.maxLJPerMonomer + k];
@@ -508,12 +503,14 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 #endif
 
 #if defined(REPULSIVE)
+
+			
 		    if (ri.z < 0){
 
-		        fi.z += c_par.rep_eps * fabs(ri.z + c_par.rep_h);
-		    } else if (ri.z > c_par.rep_h) {
+		        fi.z += c_par.rep_eps * fabs(ri.z + c_par.zs[traj]);
+		    } else if (ri.z > c_par.zs[traj]) {
 
-		    	fi.z += - c_par.rep_eps * fabs(ri.z - c_par.rep_h); 
+		    	fi.z += - c_par.rep_eps * fabs(ri.z - c_par.zs[traj]); // traj = 2
 		    }
 
 		    real rad2 = ri.x * ri.x + ri.y * ri.y;
@@ -523,6 +520,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 		        fi.x += ri.x * coeff ;
 		        fi.y += ri.y * coeff;
 		    }
+		    
 #endif
 
 			d_f[p] = fi;
@@ -548,122 +546,123 @@ __global__ void pairs_kernel(const Coord* d_r){
     if(i < c_par.Ntot && traj < c_par.Ntr){
 
     	c_top.lateral[c_par.Ntot * traj * c_top.maxLateralPerMonomer +  c_top.maxLateralPerMonomer * i] = LARGENUMBER;
-	    c_top.lateral[c_par.Ntot * traj * c_top.maxLateralPerMonomer +  c_top.maxLateralPerMonomer * i + 1] = LARGENUMBER;
-		
-		if(c_top.harmonic[i] < 0)
-	        R_MON = -r_mon;
-	    else
-	        R_MON = r_mon;
-	        
-	    ri = d_r[p];
-	    cos_fii = cosf(ri.fi); 
-	    sin_fii = sinf(ri.fi);
-	    cos_psii = cosf(ri.psi);
-	    sin_psii = sinf(ri.psi);
-	    cos_thetai = cosf(ri.theta);
-	    sin_thetai = sinf(ri.theta);
-	    xi = ri.x;
-	    yi = ri.y;
-	    zi = ri.z;
+		c_top.lateral[c_par.Ntot * traj * c_top.maxLateralPerMonomer +  c_top.maxLateralPerMonomer * i + 1] = LARGENUMBER;
 
-	    real curMinDist = PAIR_CUTOFF;
+    	if(!c_top.extra[i + traj * c_par.Ntot]){
+			
+			if(c_top.harmonic[i] < 0)
+		        R_MON = -r_mon;
+		    else
+		        R_MON = r_mon;
+		        
+		    ri = d_r[p];
+		    cos_fii = cosf(ri.fi); 
+		    sin_fii = sinf(ri.fi);
+		    cos_psii = cosf(ri.psi);
+		    sin_psii = sinf(ri.psi);
+		    cos_thetai = cosf(ri.theta);
+		    sin_thetai = sinf(ri.theta);
+		    xi = ri.x;
+		    yi = ri.y;
+		    zi = ri.z;
 
-	    for(int j = 0; j < c_par.Ntot; j++){
-	        if(c_top.harmonic[i] * c_top.harmonic[j] <= 0){
-	            rj = d_r[j + traj * c_par.Ntot];
-	            cos_fij = cosf(rj.fi);
-	            sin_fij = sinf(rj.fi);
-	            cos_psij = cosf(rj.psi);
-	            sin_psij = sinf(rj.psi);
-	            cos_thetaj = cosf(rj.theta);
-	            sin_thetaj = sinf(rj.theta);
-	            xj = rj.x;
-	            yj = rj.y;
-	            zj = rj.z;
-	            dr2 = pow(-zi + zj -
-	                R_MON * cos_fii * cos_thetai - R_MON * cos_fij * cos_thetaj,2) +
-	                pow(-xi + xj -
-	                R_MON * (sin_fii * sin_psii + cos_fii * cos_psii * sin_thetai) -
-	                R_MON * (sin_fij * sin_psij + cos_fij * cos_psij * sin_thetaj),2) +
-	                pow(-yi + yj -
-	                R_MON * (-cos_psii * sin_fii + cos_fii * sin_psii * sin_thetai) -
-	                R_MON * (-cos_psij * sin_fij + cos_fij * sin_psij * sin_thetaj),2);
-	            dr  = sqrt(dr2);
+		    real curMinDist = PAIR_CUTOFF;
 
-	            if(dr < curMinDist)
-	            {
-	                curMinDist = dr;
-	                if(c_top.harmonic[i] < 0)
-	                    c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + i * c_top.maxLongitudinalPerMonomer] = j;
-	                else
-	                    c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + i * c_top.maxLongitudinalPerMonomer] = -j;
+		    for(int j = 0; j < c_par.Ntot; j++){
+		        if(c_top.harmonic[i] * c_top.harmonic[j] <= 0){
+		            rj = d_r[j + traj * c_par.Ntot];
+		            cos_fij = cosf(rj.fi);
+		            sin_fij = sinf(rj.fi);
+		            cos_psij = cosf(rj.psi);
+		            sin_psij = sinf(rj.psi);
+		            cos_thetaj = cosf(rj.theta);
+		            sin_thetaj = sinf(rj.theta);
+		            xj = rj.x;
+		            yj = rj.y;
+		            zj = rj.z;
+		            dr2 = pow(-zi + zj -
+		                R_MON * cos_fii * cos_thetai - R_MON * cos_fij * cos_thetaj,2) +
+		                pow(-xi + xj -
+		                R_MON * (sin_fii * sin_psii + cos_fii * cos_psii * sin_thetai) -
+		                R_MON * (sin_fij * sin_psij + cos_fij * cos_psij * sin_thetaj),2) +
+		                pow(-yi + yj -
+		                R_MON * (-cos_psii * sin_fii + cos_fii * sin_psii * sin_thetai) -
+		                R_MON * (-cos_psij * sin_fij + cos_fij * sin_psij * sin_thetaj),2);
+		            dr  = sqrt(dr2);
 
-	                c_top.longitudinalCount[i + traj * c_par.Ntot] = 1;
-	            }
-	        }
-	    }
+		            if(dr < curMinDist)
+		            {
+		                curMinDist = dr;
+		                if(c_top.harmonic[i] < 0)
+		                    c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + i * c_top.maxLongitudinalPerMonomer] = j;
+		                else
+		                    c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + i * c_top.maxLongitudinalPerMonomer] = -j;
 
-	    float curMinDistArr[2] = {PAIR_CUTOFF, PAIR_CUTOFF};
+		                c_top.longitudinalCount[i + traj * c_par.Ntot] = 1;
+		            }
+		        }
+		    }
 
-	    for(int j = 0; j < c_par.Ntot; j++){
-	        if (i != j && c_top.mon_type[i] == c_top.mon_type[j]) {
-	        	rj = d_r[j + traj * c_par.Ntot];
-	            xj = rj.x;    
-	            yj = rj.y;    
-	            zj = rj.z;
-	            sin_fij = sinf(rj.fi);
-	            cos_fij = cosf(rj.fi);
-	            sin_psij = sinf(rj.psi);
-	            cos_psij = cosf(rj.psi);      
-	            sin_thetaj = sinf(rj.theta);
-	            cos_thetaj = cosf(rj.theta);  
-	            for(int ind = 0; ind < 2; ind++){   
-	                if(ind == 0){
-	                    xp1 = xp2_def;
-	                    yp1 = yp2_def;
-	                    zp1 = zp2_def;
-	                    xp2 = xp1_def;
-	                    yp2 = yp1_def;
-	                    zp2 = zp1_def;
-	                } else {
-	                    xp1 = xp1_def;
-	                    yp1 = yp1_def;
-	                    zp1 = zp1_def;
-	                    xp2 = xp2_def;
-	                    yp2 = yp2_def;
-	                    zp2 = zp2_def;
-	                }
+		    float curMinDistArr[2] = {PAIR_CUTOFF, PAIR_CUTOFF};
 
-	                dr = sqrtf(pow(zi - zj + zp2 * cos_fii * cos_thetai -
-	                zp1 * cos_fij * cos_thetaj + yp2 * cos_thetai * sin_fii -
-	                yp1 * cos_thetaj * sin_fij - xp2 * sin_thetai + xp1 * sin_thetaj,2) +
-	                pow(xi - xj - yp2 * cos_fii * sin_psii + zp2 * sin_fii * sin_psii +
-	                yp1 * cos_fij * sin_psij - zp1 * sin_fij * sin_psij +
-	                cos_psii * (xp2 * cos_thetai + zp2 * cos_fii * sin_thetai +
-	                yp2 * sin_fii * sin_thetai) - cos_psij * (xp1 * cos_thetaj + zp1 * cos_fij * sin_thetaj +
-	                yp1 * sin_fij * sin_thetaj),2) + pow(yi - yj - zp2 * cos_psii * sin_fii + zp1 * cos_psij * sin_fij +
-	                xp2 * cos_thetai * sin_psii - xp1 * cos_thetaj * sin_psij + yp2 * sin_fii * sin_psii * sin_thetai +
-	                cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai) -
-	                yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
-	                zp1 * sin_psij * sin_thetaj),2));
-	                
-	                if (ind == 0) {
-	                    if (dr < curMinDistArr[0]) {
-	                        curMinDistArr[0] = dr;
-	                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = -j;
-	                    }
-	                } else {
-	                    if ((dr < curMinDistArr[1]) && (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] + j != 0)) {
-	                        curMinDistArr[1] = dr;
-	                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
-	                    }
-	                }
-	            }
-	        }           
-	    }
+		    for(int j = 0; j < c_par.Ntot; j++){
+		        if (i != j && c_top.mon_type[i] == c_top.mon_type[j]) {
+		        	rj = d_r[j + traj * c_par.Ntot];
+		            xj = rj.x;    
+		            yj = rj.y;    
+		            zj = rj.z;
+		            sin_fij = sinf(rj.fi);
+		            cos_fij = cosf(rj.fi);
+		            sin_psij = sinf(rj.psi);
+		            cos_psij = cosf(rj.psi);      
+		            sin_thetaj = sinf(rj.theta);
+		            cos_thetaj = cosf(rj.theta);  
+		            for(int ind = 0; ind < 2; ind++){   
+		                if(ind == 0){
+		                    xp1 = xp2_def;
+		                    yp1 = yp2_def;
+		                    zp1 = zp2_def;
+		                    xp2 = xp1_def;
+		                    yp2 = yp1_def;
+		                    zp2 = zp1_def;
+		                } else {
+		                    xp1 = xp1_def;
+		                    yp1 = yp1_def;
+		                    zp1 = zp1_def;
+		                    xp2 = xp2_def;
+		                    yp2 = yp2_def;
+		                    zp2 = zp2_def;
+		                }
+
+		                dr = sqrtf(pow(zi - zj + zp2 * cos_fii * cos_thetai -
+		                zp1 * cos_fij * cos_thetaj + yp2 * cos_thetai * sin_fii -
+		                yp1 * cos_thetaj * sin_fij - xp2 * sin_thetai + xp1 * sin_thetaj,2) +
+		                pow(xi - xj - yp2 * cos_fii * sin_psii + zp2 * sin_fii * sin_psii +
+		                yp1 * cos_fij * sin_psij - zp1 * sin_fij * sin_psij +
+		                cos_psii * (xp2 * cos_thetai + zp2 * cos_fii * sin_thetai +
+		                yp2 * sin_fii * sin_thetai) - cos_psij * (xp1 * cos_thetaj + zp1 * cos_fij * sin_thetaj +
+		                yp1 * sin_fij * sin_thetaj),2) + pow(yi - yj - zp2 * cos_psii * sin_fii + zp1 * cos_psij * sin_fij +
+		                xp2 * cos_thetai * sin_psii - xp1 * cos_thetaj * sin_psij + yp2 * sin_fii * sin_psii * sin_thetai +
+		                cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai) -
+		                yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
+		                zp1 * sin_psij * sin_thetaj),2));
+		                
+		                if (ind == 0) {
+		                    if (dr < curMinDistArr[0]) {
+		                        curMinDistArr[0] = dr;
+		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = -j;
+		                    }
+		                } else {
+		                    if ((dr < curMinDistArr[1]) && (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] + j != 0)) {
+		                        curMinDistArr[1] = dr;
+		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
+		                    }
+		                }
+		            }
+		        }           
+		    }
+		}    
     }
-
-    
     
 }
 
@@ -692,7 +691,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 	real R_MON = r_mon;
 
 	if (ind < c_par.Ntot && traj < c_par.Ntr){
-		if(!c_top.extra[ind + traj * par.Ntot]){
+		if(!c_top.extra[ind + traj * c_par.Ntot]){
 			ri = d_r[p];
 			cos_fii = cosf(ri.fi); 
 			sin_fii = sinf(ri.fi);
@@ -839,7 +838,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 	            }
 			}
 #endif
-			
+
 #if defined(MORSE)
 			for(int k = 0; k < c_top.lateralCount[ind + traj * c_par.Ntot]; k++){
 				j = c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + c_top.maxLateralPerMonomer * ind + k];
@@ -943,21 +942,24 @@ __global__ void LJ_kernel(const Coord* r){
     
     if(i < c_par.Ntot && tr < c_par.Ntr){
 
-        ri = r[i + tr * c_par.Ntot];
-        c_top.LJCount[i + tr * c_par.Ntot] = 0;
+    	ri = r[i + tr * c_par.Ntot];
+	    c_top.LJCount[i + tr * c_par.Ntot] = 0;
 
-        for(int j = 0; j < c_par.Ntot; j++){
-            rj = r[j + tr * c_par.Ntot];
-            real dr = sqrt(pow(ri.x - rj.x,2)+
-                            pow(ri.y - rj.y,2)+
-                            pow(ri.z - rj.z,2));
+    	if(!c_top.extra[i + tr * c_par.Ntot]){
 
-            if((dr < c_par.ljpairscutoff) && (i != j)){
-                c_top.LJCount[i + tr * c_par.Ntot]++;
-                c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * tr + i * c_top.maxLJPerMonomer + c_top.LJCount[i + tr * c_par.Ntot] - 1] = j;
-            }
-        }   
-    }
+	        for(int j = 0; j < c_par.Ntot; j++){
+	            rj = r[j + tr * c_par.Ntot];
+	            real dr = sqrt(pow(ri.x - rj.x,2)+
+	                            pow(ri.y - rj.y,2)+
+	                            pow(ri.z - rj.z,2));
+
+	            if((dr < c_par.ljpairscutoff) && (i != j)){
+	                c_top.LJCount[i + tr * c_par.Ntot]++;
+	                c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * tr + i * c_top.maxLJPerMonomer + c_top.LJCount[i + tr * c_par.Ntot] - 1] = j;
+	            }
+        	}   
+    	}
+	}
 }
 
 
@@ -967,7 +969,7 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 	float4 rf_ang = make_float4(0,0,0,0);
 	if(p < c_par.Ntot * c_par.Ntr){
 		Coord f, ri;
-		if(!c_top.fixed[p%c_par.Ntot]){
+		if(!c_top.fixed[p % c_par.Ntot] && !(c_top.extra[p])){
 			f = d_f[p];
 			ri = d_r[p];
 			rf_xyz = rforce(p);
@@ -1012,6 +1014,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	Coord* d_r;
 	Coord* d_f;
 	Topology topGPU;
+	//Parameters parGPU;
 
 	cudaSetDevice(par.device);
 	checkCUDAError("device");
@@ -1082,7 +1085,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	checkCUDAError("extra copy");
 
 #ifdef LJ_on
-	topGPU.maxLJPerMonomer = 256;  ///I hope it will be enough       =top.maxLJPerMonomer;
+	topGPU.maxLJPerMonomer = 128;  ///I hope it will be enough       =top.maxLJPerMonomer;
 	cudaMalloc((void**)&(topGPU.LJCount), par.Ntot*sizeof(int)*par.Ntr);
 	checkCUDAError("lj_count allocation");
 	cudaMalloc((void**)&(topGPU.LJ), par.Ntot*sizeof(int)*par.Ntr*topGPU.maxLJPerMonomer);
@@ -1094,26 +1097,29 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	checkCUDAError("copy of topGPU pointer to const memory");
 
 	cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
-	checkCUDAError("copy parameters");
+	checkCUDAError("copy parameters to const memory");
 
 #ifdef OUTPUT_EN     //energies initializing
 	Energies* d_energies;
 	cudaMalloc((void**)&d_energies, par.Ntot*par.Ntr * sizeof(Energies));
 	checkCUDAError("d_energies allocation");
 #endif
-	
+
 	initRand(par.rseed, 2*par.Ntot*par.Ntr);
+
+    int* mt_len = (int*)malloc(par.Ntr * sizeof(int));
+	int* mt_len_prev = (int*)malloc(par.Ntr * sizeof(int));
+	//int* delta = (int*)malloc(par.Ntr * sizeof(int))
+
+	
 																														
 	for(long long int step = 0; step < par.steps; step++){
-
-		//printf("Inside steps\n");
 
 #ifdef LJ_on
 		if(step % par.ljpairsupdatefreq == 0){ //pairs update frequency 
 			//printf("LJPairs are updated");
 			LJ_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
 			checkCUDAError("lj_kernel");
-
 		}
 #endif
 
@@ -1124,20 +1130,9 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
             checkCUDAError("pairs_kernel");
         }
 #endif
-		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
-#ifdef OUTPUT_EN
-            energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
-            checkCUDAError("energy_kernel");
-            cudaMemcpy(energies, d_energies, par.Ntr * par.Ntot * sizeof(Energies), cudaMemcpyDeviceToHost);
-            checkCUDAError("energy_copy");
-#endif
-			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
-			checkCUDAError("r update copy");
-			update(step);
-		}
 
 		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
-		checkCUDAError("compute_forces");
+		checkCUDAError("compute_kernel");
 
 #if defined (OUTPUT_FORCE)
 		cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
@@ -1145,6 +1140,59 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 		integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
 		checkCUDAError("integrate_kernel");
+
+
+		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
+
+#ifdef OUTPUT_EN
+            energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
+            checkCUDAError("energy_kernel");
+            cudaMemcpy(energies, d_energies, par.Ntr * par.Ntot * sizeof(Energies), cudaMemcpyDeviceToHost);
+            checkCUDAError("energy_copy");
+#endif
+			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
+			checkCUDAError("r copy");
+
+#ifdef MT_LENGTH
+			
+			if (step != 0){
+	#ifdef CONCENTRATION
+				memcpy(mt_len_prev, mt_len, par.Ntr*sizeof(float));
+				
+				mt_length(step, mt_len);
+				for (int i = 0; i < par.Ntr; i++){
+					mt_len_prev[i] = mt_len[i] - mt_len_prev[i];
+				}
+
+		
+				change_conc(mt_len_prev, mt_len);
+														////probably here must be copying of memory with parameters
+				cudaMemcpy(topGPU.extra, top.extra, par.Ntr * par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
+				checkCUDAError("extra copy to device");
+				cudaMemcpy(d_r, r, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
+				checkCUDAError("from r to d_r copy");
+
+				cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
+				checkCUDAError("copy parameters to const memory");
+
+				cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
+				checkCUDAError("copy of topGPU pointer to const memory");
+	#endif
+				update(step, mt_len);	
+				
+			} 
+			else{
+				update(step, mt_len);
+				mt_length(step,mt_len);
+			}
+
+#endif
+
+#ifndef MT_LENGTH			
+			update(step, mt_len);
+#endif			
+
+		}
 	}
 
 	cudaFree(d_r);

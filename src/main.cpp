@@ -12,6 +12,7 @@
 #include "parameters.h"
 #include "configreader.h"
 #include "timer.h"
+#include <ctime>
 #include "wrapper.h"
 #include <stdio.h>
 
@@ -23,14 +24,15 @@ void read_PDB(const char* filename_xyz, const char* filename_ang);
 void saveCoordPDB(const char* pdbfilename_xyz, const char* pdbfilename_ang);
 void ReadFromDCD(Parameters par, Topology top, char* dcdfilename_xyz, char* dcdfilename_ang);
 void saveCoordDCD();
-void update(long long int step);
+void update(long long int step, int* mt_len);
+void change_conc(int* delta, int* mt_len);
 void UpdateLJPairs();
 void UpdatePairs();
 void AssemblyInit();
 void writeRestart(long long int step);
 void readRestart();
 void OutputAllEnergies(long long int step);
-void mt_length(long long int step);
+void mt_length(long long int step, int* mt_len);
 void OutputSumForce();
 void OutputForces();
 void initParameters(int argc, char* argv[]);
@@ -133,7 +135,7 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-void update(long long int step){
+void update(long long int step, int* mt_len){
     printf("Saving coordinates at step %lld\n", step);
     printTime(step);
     printEstimatedTimeleft((real)step/(real)par.steps);
@@ -141,18 +143,76 @@ void update(long long int step){
 
 #ifdef OUTPUT_FORCE
     OutputSumForce();
-    //OutputForces();
 #endif
 
 #ifdef OUTPUT_EN
     OutputAllEnergies(step);
 #endif
 
-#ifdef MT_LENGTH
-    mt_length(step);
-#endif
 }
 
+#ifdef CONCENTRATION
+void change_conc(int* delta, int* mt_len){
+
+    for(int tr = 0; tr < par.Ntr; tr++){
+
+        int num_of_extra = 0;
+        for (int i = 0; i < par.Ntot; i++){
+            if (top.extra[i + tr * par.Ntot]){
+                num_of_extra++;
+            } 
+        }
+        float Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
+        int Nfree = par.Ntot - mt_len[tr] - num_of_extra;
+
+        int delt = 0;
+        if (delta[tr] % 2){
+            delt = delta[tr] - 1;
+        } else {
+            delt = delta[tr];
+        }
+
+        if (delt > 0 && par.conc > 1.0e7 * Nfree / (6.0 * Vol)){
+            printf("delta = %d\n", delt);
+            for (int d = 0; d < delt; d++){             // delta N tub = (1 + 4/13 * 40 *13 / 160) N extra = 2 N extra 
+                for(int i = 0; i < par.Ntot; i+=2){
+                    if (top.extra[i + tr * par.Ntot] && top.mon_type[i] == 0){
+                        top.extra[i + tr * par.Ntot] = false;
+                        top.extra[i + tr * par.Ntot+1] = false;
+                        float x,y;
+                        for(int j = 0; j > -1 ; j++) {
+                            srand(j*time(NULL)-i);
+                            x = par.rep_r - 2*(rand() % int(par.rep_r));
+                            y = par.rep_r - 2*(rand() % int(par.rep_r));
+                            if (x*x + y*y <= par.rep_r * par.rep_r){   //// check if its in cylinder
+                                printf("New x,y coordinates for extra particle: %f  %f index: %d\n", x, y, i + tr * par.Ntot);
+                                num_of_extra -= 2;
+                                break;
+                            }
+                        }
+                        float z = par.zs[tr] + 3*2*r_mon;
+                        r[i + tr * par.Ntot].x = x; //
+                        r[i + tr * par.Ntot].y = y;
+                        r[i + tr * par.Ntot].z = z; ///fix
+                        r[i + tr * par.Ntot +1].x = x;
+                        r[i + tr * par.Ntot +1].y = y;
+                        r[i + tr * par.Ntot +1].z = z + 2*r_mon;
+
+                        break;
+                    }
+
+                }
+            }
+
+            par.zs[tr] += 2.0 * r_mon * delt / 13.0;
+        }
+        
+        Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
+        Nfree = par.Ntot - mt_len[tr] - num_of_extra;
+        printf("Concentration for tajectory[%d]: %f [muMole / L],\t %f [1 / nm^3],\t %d [1 / Volume],\t  Volume: %f [nm^3]\n", tr, 1e7 * Nfree / (6.0 * Vol), Nfree / Vol, Nfree, Vol);
+    }
+}
+#endif
 
 
 void initParameters(int argc, char* argv[]){
@@ -291,8 +351,13 @@ void initParameters(int argc, char* argv[]){
 #if defined(REPULSIVE)
     par.rep_h = getFloatParameter(REP_H);
     par.rep_r = getFloatParameter(REP_R);
-    par.rep_eps = getFloatParameter(REP_EPS);    
+    par.rep_eps = getFloatParameter(REP_EPS); 
+    for (int i = 0; i < par.Ntr; i++){
+        par.zs[i] = par.rep_h;
+    }   
 #endif
+
+   
 
     parseParametersFile(par.condFilename, argc, argv);
     par.Temp = getFloatParameter(PARAMETER_TEMPERATURE);
@@ -302,6 +367,9 @@ void initParameters(int argc, char* argv[]){
     par.varTheta = sqrtf(2.0f*KB*par.Temp*par.dt/par.gammaTheta);
     par.alpha = getFloatParameter(ALPHA_GEOMETRY);
     par.freeze_temp = getFloatParameter(FREEZE_TEMP);
+#ifdef CONCENTRATION
+    par.conc = getFloatParameter(CONC);
+#endif 
 }
 
 void read_PDB(const char* filename_xyz, const char* filename_ang){
@@ -372,7 +440,7 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
         for(j = 0; j < par.Ntot; j++){
             if(pdb.atoms[i].resid == pdb.atoms[j].resid &&
                     pdb.atoms[i].chain == pdb.atoms[j].chain
-                    && (i!=j) ){
+                    && (i!=j) && (abs(i-j) < 2) ){
                 top.harmonicCount[i]++;
                 if(top.maxHarmonicPerMonomer < top.harmonicCount[i])
                         top.maxHarmonicPerMonomer = top.harmonicCount[i];
@@ -386,7 +454,7 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
         for(j = 0; j < par.Ntot; j++){
             if(pdb.atoms[i].resid == pdb.atoms[j].resid &&
                     pdb.atoms[i].chain == pdb.atoms[j].chain &&
-                    (i!=j)){
+                    (i!=j)  && (abs(i-j) < 2)){
                 if(pdb.atoms[i].id > pdb.atoms[j].id){
                     top.harmonic[top.maxHarmonicPerMonomer*i + top.harmonicCount[i]] = j; // << BUG: indexation
                 }
@@ -397,12 +465,14 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
             }
         }
     }
-
     // Longitudal exponential
     for(i = 0; i < par.Ntot * par.Ntr; i++) top.longitudinalCount[i] = 0;
 
     for (int traj = 0; traj < par.Ntr; traj++){
         for(i = 0; i < par.Ntot; i++){
+            if (top.extra[i + traj * par.Ntot]) { //////////////////////////////////////////////////
+                break;
+            }
             for(j = 0; j < par.Ntot; j++){
                 if( (pdb.atoms[i].resid == (pdb.atoms[j].resid + 1)) &&
                     (pdb.atoms[i].chain == pdb.atoms[j].chain) &&
@@ -420,6 +490,9 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
 
     for(int traj = 0; traj < par.Ntr; traj++){
         for(i = 0; i < par.Ntot; i++){
+            if (top.extra[i + traj * par.Ntot]) {
+                break;                              /////////////////////////////////////////////////
+            }
             for(j = 0; j < par.Ntot; j++){
                 if(abs(pdb.atoms[i].resid - pdb.atoms[j].resid) == 1 &&
                     pdb.atoms[i].chain == pdb.atoms[j].chain &&
@@ -455,6 +528,9 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
     for(int traj = 0; traj < par.Ntr; traj++){
 
         for(i = 0; i < par.Ntot; i++){
+            if (top.extra[i + traj * par.Ntot]) {
+                break;
+            }
             xi = r[i].x;    
             yi = r[i].y;    
             zi = r[i].z;
@@ -524,6 +600,9 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
 
     for(int traj = 0; traj < par.Ntr; traj++){
         for(i = 0; i < par.Ntot; i++){
+             if (top.extra[i + traj * par.Ntot]) {
+                break;                                  /////////////////////////////////////////////////
+            }
             xi = r[i].x;    
             yi = r[i].y;    
             zi = r[i].z;
@@ -610,7 +689,7 @@ void AssemblyInit()
     top.maxLateralPerMonomer = 2;
 }
 
-void mt_length(long long int step){
+void mt_length(long long int step, int* mt_len){
 
     for (int traj = 0; traj < par.Ntr; traj++){
 
@@ -662,7 +741,8 @@ void mt_length(long long int step){
         FILE* mtLenFile = fopen(fileName, "a");
         fprintf(mtLenFile, "%lld\t%d\t%f\n" , step, (sum / PF_NUMBER), (4 * sum / float(PF_NUMBER)));
         fclose(mtLenFile);
-        printf("length = %d\n", sum / 13); 
+        mt_len[traj] = sum;
+        printf("on tubule [%d]  = %d\n", traj, sum); 
     }     
 }
 
