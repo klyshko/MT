@@ -8,7 +8,7 @@ include_directories(.)
 set(CMAKE_CXX_FLAGS -fPIC)
 set(CMAKE_C_FLAGS -fPIC)
 
-
+option(CONCENTRATION  "Constant concentration of free tubulin" OFF)
 option(OUTPUT_EN  "Output energy" ON)
 option(ANGLES  "Use complex representations of angle interactions" OFF)
 option(SIMPLEWELL  "Temporary and final feature" OFF)
@@ -34,6 +34,11 @@ if(${WITH_MPI})
 	include_directories(${MPI_INCLUDE_PATH})
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D USE_MPI")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D USE_MPI")
+endif()
+
+if(${CONCENTRATION})
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D CONCENTRATION")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D CONCENTRATION")
 endif()
 
 if(${MT_LENGTH})
