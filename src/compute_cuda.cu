@@ -616,7 +616,8 @@ __global__ void pairs_kernel(const Coord* d_r){
 		            sin_psij = sinf(rj.psi);
 		            cos_psij = cosf(rj.psi);      
 		            sin_thetaj = sinf(rj.theta);
-		            cos_thetaj = cosf(rj.theta);  
+		            cos_thetaj = cosf(rj.theta); 
+		             
 		            for(int ind = 0; ind < 2; ind++){   
 		                if(ind == 0){
 		                    xp1 = xp2_def;
@@ -647,17 +648,31 @@ __global__ void pairs_kernel(const Coord* d_r){
 		                yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
 		                zp1 * sin_psij * sin_thetaj),2));
 		                
+		                /*
 		                if (ind == 0) {
 		                    if (dr < curMinDistArr[0]) {
 		                        curMinDistArr[0] = dr;
 		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = -j;
 		                    }
 		                } else {
-		                    if ((dr < curMinDistArr[1]) && (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] + j != 0)) {
+		                    if ((dr < curMinDistArr[1]) ) {
 		                        curMinDistArr[1] = dr;
 		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
-		                    }
+		                    } 
 		                }
+						*/
+						if (dr < curMinDistArr[ind]) {
+		                        curMinDistArr[ind] = dr;
+		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + ind] = pow(-1.0, ind + 1) * j;
+		                }
+                    }
+
+		            if (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] + c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] == 0 ){
+		            	if (curMinDistArr[0] < curMinDistArr[1]) {
+		            		c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = LARGENUMBER;
+		            	} else {
+		            		c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = LARGENUMBER;
+		            	}
 		            }
 		        }           
 		    }

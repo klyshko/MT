@@ -692,13 +692,26 @@ void AssemblyInit()
 void mt_length(long long int step, int* mt_len){
 
     for (int traj = 0; traj < par.Ntr; traj++){
+        int sum = 0;
 
         int protofilamentsLength[PF_NUMBER] = {0,0,0,0,0,0,0,0,0,0,0,0,0};
         for (int i = traj * par.Ntot; i < (traj + 1) * par.Ntot; i++) {
 
             float rad = sqrt(r[i].x * r[i].x + r[i].y * r[i].y);
             if ((rad < R_MT + R_THRES) && (rad > R_MT - R_THRES)) {
-            // detect particles inside microtubule   
+                float theta = 0.0;
+            // detect particles inside microtubule 
+                if (r[i].theta > 0){
+                    theta -=  (2 *M_PI) * (int)(r[i].theta / (2 * M_PI));
+                } else {
+                    theta -=  (2 *M_PI) * (-1 + (int)(r[i].theta / (2 * M_PI)));
+                }
+                
+                if ((r[i].theta < ANG_THRES && r[i].theta > -ANG_THRES) || (r[i].theta < 2 * M_PI + ANG_THRES && r[i].theta > 2 * M_PI - ANG_THRES)) {
+                    sum++;
+                }
+
+            /*  
                 for (int j = 0; j < PF_NUMBER; j++){
 
                     float angle = j * 2 * M_PI / PF_NUMBER;
@@ -726,24 +739,31 @@ void mt_length(long long int step, int* mt_len){
                     }
 
                 }
+                */
             }
         }
+        /*
         int sum = 0;
         for (int i = 0; i < PF_NUMBER; i++){
             //if (protofilamentsLength[i] % 2) protofilamentsLength[i]--;
             //printf("PF[%d] = %d\n", i, protofilamentsLength[i]);
             sum += protofilamentsLength[i];
 
-        }
-
-        char fileName[64];
-        sprintf(fileName, "mtlength%d.dat", traj);
-        FILE* mtLenFile = fopen(fileName, "a");
-        fprintf(mtLenFile, "%lld\t%d\t%f\n" , step, (sum / PF_NUMBER), (4 * sum / float(PF_NUMBER)));
-        fclose(mtLenFile);
+        }*/
         mt_len[traj] = sum;
-        printf("on tubule [%d]  = %d\n", traj, sum); 
-    }     
+        printf("tubule[%d]: %d\n", traj, sum);
+        /*char fileName[64];
+        sprintf(fileName, "mtlength%d.dat", traj);
+        */
+    }
+    FILE* mtLenFile = fopen("mt_len.dat", "a");
+    fprintf(mtLenFile, "%lld\t" , step);
+    for (int traj = 0; traj < par.Ntr; traj++){
+        fprintf(mtLenFile, "%f\t" , 4.0 * (float)mt_len[traj] / PF_NUMBER);
+    }
+    fprintf(mtLenFile, "\n");
+    fclose(mtLenFile);
+        
 }
 
 void OutputSumForce(){
@@ -786,15 +806,16 @@ void OutputAllEnergies(long long int step){
             printf("Some energy in %d trajectory is NaN. NOT Exit program\n", tr);
             //exit(0);
         }
-        char fileName[64];
-        sprintf(fileName, "energies%d.dat", tr);
-        FILE* energyFile = fopen(fileName, "a");
-        //printf("ENERGIES[%d] harm = %f long = %f lat = %f psi = %f fi = %f theta = %f lj = %f\n", tr, 
-        //    fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
 
-        fprintf(energyFile, "%lld\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\n",
-         step, fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
-        fclose(energyFile);
+        //char fileName[64];
+        //sprintf(fileName, "energies%d.dat", tr);
+        //FILE* energyFile = fopen(fileName, "a");
+        printf("Energies[%d]:\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", tr, 
+            fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
+
+        //fprintf(energyFile, "%lld\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\t\t%f\n",
+        // step, fullEnergy[tr].U_harm, fullEnergy[tr].U_long, fullEnergy[tr].U_lat, fullEnergy[tr].U_psi, fullEnergy[tr].U_fi, fullEnergy[tr].U_teta, fullEnergy[tr].U_lj);
+        //fclose(energyFile);
     }
     
 }
