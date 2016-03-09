@@ -167,43 +167,41 @@ int change_conc(int* delta, int* mt_len){
         float Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
         int Nfree = par.Ntot - mt_len[tr] - num_of_extra;
 
-        if (par.conc > 1.0e7 * Nfree / (6.0 * Vol)){
-            //printf("delta = %d\n", delt);
-            while (Nfree < par.conc * Vol){
-                for(int i = 0; i < par.Ntot; i+=2){
-                    if (top.extra[i + tr * par.Ntot] && top.mon_type[i] == 0){
-                        top.extra[i + tr * par.Ntot] = false;
-                        top.extra[i + tr * par.Ntot+1] = false;
-                        float x,y;
-                        for(int j = 0; j > -1 ; j++) {
-                            srand(j*time(NULL)-i);
-                            x = par.rep_r - 2*(rand() % int(par.rep_r));
-                            y = par.rep_r - 2*(rand() % int(par.rep_r));
-                            if (x*x + y*y <= par.rep_r * par.rep_r){   //// check if its in cylinder
-                                printf("New x,y coordinates for extra particle: %f  %f index: %d\n", x, y, i + tr * par.Ntot);
-                                num_of_extra -= 2;
-                                break;
-                            }
+       
+        while (1.0e7 * Nfree / 6.0 < par.conc * Vol){
+            for(int i = 0; i < par.Ntot; i+=2){
+                if (top.extra[i + tr * par.Ntot] && top.mon_type[i] == 0){
+                    top.extra[i + tr * par.Ntot] = false;
+                    top.extra[i + tr * par.Ntot+1] = false;
+                    float x,y;
+                    for(int j = 0; j > -1 ; j++) {
+                        srand(j*time(NULL)-i);
+                        x = par.rep_r - 2*(rand() % int(par.rep_r));
+                        y = par.rep_r - 2*(rand() % int(par.rep_r));
+                        if (x*x + y*y <= par.rep_r * par.rep_r){   //// check if its in cylinder
+                            printf("New x,y coordinates for extra particle: %f  %f index: %d\n", x, y, i + tr * par.Ntot);
+                            num_of_extra -= 2;
+                            break;
                         }
-                        float z = par.zs[tr] + 3*2*r_mon;
-                        r[i + tr * par.Ntot].x = x; //
-                        r[i + tr * par.Ntot].y = y;
-                        r[i + tr * par.Ntot].z = z; ///fix
-                        r[i + tr * par.Ntot +1].x = x;
-                        r[i + tr * par.Ntot +1].y = y;
-                        r[i + tr * par.Ntot +1].z = z + 2*r_mon;
-                        flag++;
-                        break;
                     }
-
+                    float z = par.zs[tr] + 3*2*r_mon;
+                    r[i + tr * par.Ntot].x = x; //
+                    r[i + tr * par.Ntot].y = y;
+                    r[i + tr * par.Ntot].z = z; ///fix
+                    r[i + tr * par.Ntot +1].x = x;
+                    r[i + tr * par.Ntot +1].y = y;
+                    r[i + tr * par.Ntot +1].z = z + 2*r_mon;
+                    flag++;
+                    break;
                 }
 
-                Nfree += 2;
             }
+
+            Nfree += 2;
+        }
             
            // par.zs[tr] += 2.0 * r_mon * delt / 13.0;
-        }
-        
+               
         //Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
         //Nfree = par.Ntot - mt_len[tr] - num_of_extra;
         printf("Concentration for tajectory[%d]: %f [muMole / L],\t %f [1 / nm^3],\t %d [1 / Volume],\t  Volume: %f [nm^3]\n", tr, 1.0e7 * Nfree / (6.0 * Vol), Nfree / Vol, Nfree, Vol);
