@@ -25,7 +25,7 @@ void saveCoordPDB(const char* pdbfilename_xyz, const char* pdbfilename_ang);
 void ReadFromDCD(Parameters par, Topology top, char* dcdfilename_xyz, char* dcdfilename_ang);
 void saveCoordDCD();
 void update(long long int step, int* mt_len);
-void change_conc(int* delta, int* mt_len);
+int change_conc(int* delta, int* mt_len);
 void UpdateLJPairs();
 void UpdatePairs();
 void AssemblyInit();
@@ -129,6 +129,7 @@ int main(int argc, char *argv[]){
     free(top.LJ);
     free(top.LJCount);
     free(top.fixed);
+    free(top.extra);
 #ifdef OUTPUT_EN
     free(energies);
 #endif
@@ -152,7 +153,8 @@ void update(long long int step, int* mt_len){
 }
 
 #ifdef CONCENTRATION
-void change_conc(int* delta, int* mt_len){
+int change_conc(int* delta, int* mt_len){
+    int flag = 0;
 
     for(int tr = 0; tr < par.Ntr; tr++){
 
@@ -165,16 +167,9 @@ void change_conc(int* delta, int* mt_len){
         float Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
         int Nfree = par.Ntot - mt_len[tr] - num_of_extra;
 
-        int delt = 0;
-        if (delta[tr] % 2){
-            delt = delta[tr] - 1;
-        } else {
-            delt = delta[tr];
-        }
-
-        if (delt > 0 && par.conc > 1.0e7 * Nfree / (6.0 * Vol)){
-            printf("delta = %d\n", delt);
-            for (int d = 0; d < delt; d++){             // delta N tub = (1 + 4/13 * 40 *13 / 160) N extra = 2 N extra 
+        if (par.conc > 1.0e7 * Nfree / (6.0 * Vol)){
+            //printf("delta = %d\n", delt);
+            while (Nfree < par.conc * Vol){
                 for(int i = 0; i < par.Ntot; i+=2){
                     if (top.extra[i + tr * par.Ntot] && top.mon_type[i] == 0){
                         top.extra[i + tr * par.Ntot] = false;
@@ -197,20 +192,23 @@ void change_conc(int* delta, int* mt_len){
                         r[i + tr * par.Ntot +1].x = x;
                         r[i + tr * par.Ntot +1].y = y;
                         r[i + tr * par.Ntot +1].z = z + 2*r_mon;
-
+                        flag++;
                         break;
                     }
 
                 }
-            }
 
-            par.zs[tr] += 2.0 * r_mon * delt / 13.0;
+                Nfree += 2;
+            }
+            
+           // par.zs[tr] += 2.0 * r_mon * delt / 13.0;
         }
         
-        Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
-        Nfree = par.Ntot - mt_len[tr] - num_of_extra;
-        printf("Concentration for tajectory[%d]: %f [muMole / L],\t %f [1 / nm^3],\t %d [1 / Volume],\t  Volume: %f [nm^3]\n", tr, 1e7 * Nfree / (6.0 * Vol), Nfree / Vol, Nfree, Vol);
+        //Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
+        //Nfree = par.Ntot - mt_len[tr] - num_of_extra;
+        printf("Concentration for tajectory[%d]: %f [muMole / L],\t %f [1 / nm^3],\t %d [1 / Volume],\t  Volume: %f [nm^3]\n", tr, 1.0e7 * Nfree / (6.0 * Vol), Nfree / Vol, Nfree, Vol);
     }
+    return flag;
 }
 #endif
 
@@ -701,13 +699,7 @@ void mt_length(long long int step, int* mt_len){
             if ((rad < R_MT + R_THRES) && (rad > R_MT - R_THRES)) {
                 float theta = 0.0;
             // detect particles inside microtubule 
-                if (r[i].theta > 0){
-                    theta -=  (2 *M_PI) * (int)(r[i].theta / (2 * M_PI));
-                } else {
-                    theta -=  (2 *M_PI) * (-1 + (int)(r[i].theta / (2 * M_PI)));
-                }
-                
-                if ((r[i].theta < ANG_THRES && r[i].theta > -ANG_THRES) || (r[i].theta < 2 * M_PI + ANG_THRES && r[i].theta > 2 * M_PI - ANG_THRES)) {
+                if (cosf(r[i].theta) > cosf(ANG_THRES)){
                     sum++;
                 }
 
