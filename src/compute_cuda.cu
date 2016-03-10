@@ -268,6 +268,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 				
 	            if(dr < ANGLE_CUTOFF )
 	            {
+	            	
 	            	psiji = rj.psi - ri.psi - 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
 	                psiij = - psiji;
 	            	thetaji = rj.theta - ri.theta - 2 * M_PI * (int)((rj.theta - ri.theta)/(2 * M_PI));
@@ -297,8 +298,8 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	                    fi.psi   -= c_par.B_psi		*	(ri.psi 	- 	rj.psi 		- c_par.psi_0	);
 	                    fi.fi	 -= c_par.B_fi		*	(ri.fi 		- 	rj.fi 		- c_par.fi_0	);
 	                    fi.theta -= c_par.B_theta	*	(ri.theta 	- 	rj.theta 	- c_par.theta_0	);
-	                }*/
-	                
+	                }
+	                */
 	            }
 	            
 			} 
@@ -568,8 +569,10 @@ __global__ void pairs_kernel(const Coord* d_r){
 
 		    real curMinDist = PAIR_CUTOFF;
 
+		    c_top.longitudinalCount[i + traj * c_par.Ntot] = 0;
+
 		    for(int j = 0; j < c_par.Ntot; j++){
-		        if(c_top.harmonic[i] * c_top.harmonic[j] <= 0){
+		        if(c_top.harmonic[i] * c_top.harmonic[j] <= 0 && abs(c_top.harmonic[i]) != j ){
 		            rj = d_r[j + traj * c_par.Ntot];
 		            cos_fij = cosf(rj.fi);
 		            sin_fij = sinf(rj.fi);
@@ -604,13 +607,12 @@ __global__ void pairs_kernel(const Coord* d_r){
 		    }
 
 		    float curMinDistArr[2] = {PAIR_CUTOFF, PAIR_CUTOFF};
-		    int before_j = LARGENUMBER;
-		    int flag = 0;
+		    
+
 
 		    for(int j = 0; j < c_par.Ntot; j++){
-		        if (i != j && c_top.mon_type[i] == c_top.mon_type[j]) {
+		        if (i != j && c_top.harmonic[i] * c_top.harmonic[j] >= 0 ){//c_top.mon_type[i] == c_top.mon_type[j]) {
 
-		        	flag = 0;
 		        	rj = d_r[j + traj * c_par.Ntot];
 		            xj = rj.x;    
 		            yj = rj.y;    
@@ -651,26 +653,37 @@ __global__ void pairs_kernel(const Coord* d_r){
 		                cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai) -
 		                yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
 		                zp1 * sin_psij * sin_thetaj),2));
-		                
-		                /*
+						/*	
+						if (ind == 0) {
+		                    if (dr < curMinDistArr[0]) {
+		                        curMinDistArr[0] = dr;
+		                    }
+		                } else {
+		                    if ((dr < curMinDistArr[1]) ) {
+		                        curMinDistArr[1] = dr;
+		                    } 
+		                }
+		                */
 		                if (ind == 0) {
 		                    if (dr < curMinDistArr[0]) {
 		                        curMinDistArr[0] = dr;
 		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = -j;
 		                    }
 		                } else {
-		                    if ((dr < curMinDistArr[1]) ) {
+		                    if ((dr < curMinDistArr[1]) && (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] + j != 0)) {
 		                        curMinDistArr[1] = dr;
 		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
-		                    } 
+		                    }
 		                }
-						*/
-						if (dr < curMinDistArr[ind]) {
-		                        curMinDistArr[ind] = dr;
-		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + ind] = j * (int)pow(-1.0, ind + 1);
-		                        flag = 1;
-		                }
-                    }
+
+					}
+					/*
+                    if (curMinDistArr[0] < curMinDistArr[1] && curMinDistArr[0] != PAIR_CUTOFF){
+                    	c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = -j;
+                    } else if (curMinDistArr[1] < curMinDistArr[0] && curMinDistArr[1] != PAIR_CUTOFF){
+                    	c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
+                    } 
+
 
 		            if (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] + c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] == 0 ){
 		            	if (curMinDistArr[0] < curMinDistArr[1]) {
@@ -680,14 +693,13 @@ __global__ void pairs_kernel(const Coord* d_r){
 		            	}
 		            }
 
-		            if (flag == 1){
-		            	before_j = j;
-		            }
-		        } 
+		           */
+		       } 
 
 		    }
-		}    
-    }
+		    
+		}   
+    } 
     
 }
 
@@ -868,7 +880,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 			for(int k = 0; k < c_top.lateralCount[ind + traj * c_par.Ntot]; k++){
 				j = c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + c_top.maxLateralPerMonomer * ind + k];
 				if (abs(j) == LARGENUMBER) {
-					break;
+					continue;
 				}
 				if (j <= 0){
 					j *= -1;
@@ -943,18 +955,18 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 	            }
 	        }
 #endif       
-		
-			en.U_harm = U_harm / 2;
-			en.U_long = U_long / 2;
-			en.U_lat = U_lat / 2;
-			en.U_lj = U_lj / 2;
-			en.U_psi = U_psi / 2;
-			en.U_fi = U_fi / 2;
-			en.U_teta = U_teta / 2;
 
-			d_energies[p] = en;
+		}
 
-		}	
+		en.U_harm = U_harm / 2;
+		en.U_long = U_long / 2;
+		en.U_lat = U_lat / 2;
+		en.U_lj = U_lj / 2;
+		en.U_psi = U_psi / 2;
+		en.U_fi = U_fi / 2;
+		en.U_teta = U_teta / 2;
+
+		d_energies[p] = en; 	
 	}
 }
 
@@ -1180,10 +1192,11 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 #ifdef MT_LENGTH
 			
 			if (step != 0){
-	#ifdef CONCENTRATION
+
 				memcpy(mt_len_prev, mt_len, par.Ntr*sizeof(float));
-				
 				mt_length(step, mt_len);
+	#ifdef CONCENTRATION
+				
 				for (int i = 0; i < par.Ntr; i++){
 					mt_len_prev[i] = mt_len[i] - mt_len_prev[i];
 				}

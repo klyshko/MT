@@ -53,7 +53,7 @@
 #define delta_theta	0.001
 
 //assembly_mode
-#define PAIR_CUTOFF 2.0
+#define PAIR_CUTOFF 2.5
 
 typedef struct {
 	real x;

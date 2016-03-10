@@ -467,7 +467,7 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
     for (int traj = 0; traj < par.Ntr; traj++){
         for(i = 0; i < par.Ntot; i++){
             if (top.extra[i + traj * par.Ntot]) { //////////////////////////////////////////////////
-                break;
+                continue;
             }
             for(j = 0; j < par.Ntot; j++){
                 if( (pdb.atoms[i].resid == (pdb.atoms[j].resid + 1)) &&
@@ -487,7 +487,7 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
     for(int traj = 0; traj < par.Ntr; traj++){
         for(i = 0; i < par.Ntot; i++){
             if (top.extra[i + traj * par.Ntot]) {
-                break;                              /////////////////////////////////////////////////
+                continue;                              /////////////////////////////////////////////////
             }
             for(j = 0; j < par.Ntot; j++){
                 if(abs(pdb.atoms[i].resid - pdb.atoms[j].resid) == 1 &&
@@ -525,7 +525,7 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
 
         for(i = 0; i < par.Ntot; i++){
             if (top.extra[i + traj * par.Ntot]) {
-                break;
+                continue;
             }
             xi = r[i].x;    
             yi = r[i].y;    
@@ -597,7 +597,7 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
     for(int traj = 0; traj < par.Ntr; traj++){
         for(i = 0; i < par.Ntot; i++){
              if (top.extra[i + traj * par.Ntot]) {
-                break;                                  /////////////////////////////////////////////////
+                continue;                                  /////////////////////////////////////////////////
             }
             xi = r[i].x;    
             yi = r[i].y;    
