@@ -148,7 +148,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 				fi.y     += -c_par.C * grady;
 				fi.z     += -c_par.C * gradz;
 				fi.fi    += -c_par.C * gradfi;
-				fi.psi   += -c_par.C * gradpsi;
+				fi.psi   += -c_par.C * gradpsi;	
 				fi.theta += -c_par.C * gradtheta;
 			
 			
@@ -161,7 +161,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	              	fiji = rj.fi - ri.fi - 2 * M_PI * (int)((rj.fi - ri.fi)/(2 * M_PI));
 	                fiij = - fiji;
 	                
-	                 if(R_MON > 0){
+	                if(R_MON > 0){
 
 	                    fi.psi   += c_par.B_psi		*	(psiji 		- c_par.psi_0	);
 	                    fi.fi	 += c_par.B_fi		*	(fiji 		- c_par.fi_0	);
@@ -172,6 +172,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	                    fi.fi	 -= c_par.B_fi		*	(fiij 		- c_par.fi_0	);
 	                    fi.theta -= c_par.B_theta	*	(thetaij 	- c_par.theta_0	);
 	                }
+	                
 	              	
 	            }
 	            
@@ -264,7 +265,6 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 				fi.fi    += -dUdr*gradfi;
 				fi.psi   += -dUdr*gradpsi;
 				fi.theta += -dUdr*gradtheta;
-				
 				
 	            if(dr < ANGLE_CUTOFF )
 	            {
@@ -546,8 +546,8 @@ __global__ void pairs_kernel(const Coord* d_r){
     
     if(i < c_par.Ntot && traj < c_par.Ntr){
 
-    	c_top.lateral[c_par.Ntot * traj * c_top.maxLateralPerMonomer +  c_top.maxLateralPerMonomer * i] = LARGENUMBER;
-		c_top.lateral[c_par.Ntot * traj * c_top.maxLateralPerMonomer +  c_top.maxLateralPerMonomer * i + 1] = LARGENUMBER;
+    	c_top.lateralCount[i + traj * c_par.Ntot] = 0;
+    	c_top.longitudinalCount[i + traj * c_par.Ntot] = 0;
 
     	if(!c_top.extra[i + traj * c_par.Ntot]){
 			
@@ -566,10 +566,6 @@ __global__ void pairs_kernel(const Coord* d_r){
 		    xi = ri.x;
 		    yi = ri.y;
 		    zi = ri.z;
-
-		    real curMinDist = PAIR_CUTOFF;
-
-		    c_top.longitudinalCount[i + traj * c_par.Ntot] = 0;
 
 		    for(int j = 0; j < c_par.Ntot; j++){
 		        if(c_top.harmonic[i] * c_top.harmonic[j] <= 0 && abs(c_top.harmonic[i]) != j ){
@@ -593,6 +589,15 @@ __global__ void pairs_kernel(const Coord* d_r){
 		                R_MON * (-cos_psij * sin_fij + cos_fij * sin_psij * sin_thetaj),2);
 		            dr  = sqrt(dr2);
 
+		            if(dr < PAIR_CUTOFF){
+		            	
+		            	if(c_top.harmonic[i] < 0)
+		                    c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + i * c_top.maxLongitudinalPerMonomer + c_top.longitudinalCount[i + traj * c_par.Ntot]] = j;
+		                else
+		                    c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + i * c_top.maxLongitudinalPerMonomer + c_top.longitudinalCount[i + traj * c_par.Ntot]] = -j;
+		                c_top.longitudinalCount[i + traj * c_par.Ntot]++;
+		            }
+		            /*
 		            if(dr < curMinDist)
 		            {
 		                curMinDist = dr;
@@ -603,15 +608,14 @@ __global__ void pairs_kernel(const Coord* d_r){
 
 		                c_top.longitudinalCount[i + traj * c_par.Ntot] = 1;
 		            }
+		            */
 		        }
 		    }
 
-		    float curMinDistArr[2] = {PAIR_CUTOFF, PAIR_CUTOFF};
+		    //float curMinDistArr[2] = {PAIR_CUTOFF, PAIR_CUTOFF};
 		    
-
-
 		    for(int j = 0; j < c_par.Ntot; j++){
-		        if (i != j && c_top.harmonic[i] * c_top.harmonic[j] >= 0 ){//c_top.mon_type[i] == c_top.mon_type[j]) {
+		        if (i != j){// && c_top.mon_type[i] == c_top.mon_type[j]) {
 
 		        	rj = d_r[j + traj * c_par.Ntot];
 		            xj = rj.x;    
@@ -653,17 +657,19 @@ __global__ void pairs_kernel(const Coord* d_r){
 		                cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai) -
 		                yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
 		                zp1 * sin_psij * sin_thetaj),2));
-						/*	
-						if (ind == 0) {
-		                    if (dr < curMinDistArr[0]) {
-		                        curMinDistArr[0] = dr;
-		                    }
-		                } else {
-		                    if ((dr < curMinDistArr[1]) ) {
-		                        curMinDistArr[1] = dr;
-		                    } 
-		                }
-		                */
+						
+
+						if (dr < PAIR_CUTOFF - 0.5){
+							if (ind == 0){ 
+								c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + c_top.lateralCount[i + traj * c_par.Ntot]] = -j;
+								c_top.lateralCount[i + traj * c_par.Ntot]++;
+							} else if (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + c_top.lateralCount[i + traj * c_par.Ntot] - 1] + j != 0){
+								c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + c_top.lateralCount[i + traj * c_par.Ntot]] = j;
+								c_top.lateralCount[i + traj * c_par.Ntot]++;
+							}
+		 	
+						}
+		                /*
 		                if (ind == 0) {
 		                    if (dr < curMinDistArr[0]) {
 		                        curMinDistArr[0] = dr;
@@ -675,6 +681,7 @@ __global__ void pairs_kernel(const Coord* d_r){
 		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
 		                    }
 		                }
+		                */
 
 					}
 					/*
@@ -683,15 +690,6 @@ __global__ void pairs_kernel(const Coord* d_r){
                     } else if (curMinDistArr[1] < curMinDistArr[0] && curMinDistArr[1] != PAIR_CUTOFF){
                     	c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
                     } 
-
-
-		            if (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] + c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] == 0 ){
-		            	if (curMinDistArr[0] < curMinDistArr[1]) {
-		            		c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = before_j;
-		            	} else {
-		            		c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = - before_j;
-		            	}
-		            }
 
 		           */
 		       } 
@@ -879,9 +877,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 #if defined(MORSE)
 			for(int k = 0; k < c_top.lateralCount[ind + traj * c_par.Ntot]; k++){
 				j = c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + c_top.maxLateralPerMonomer * ind + k];
-				if (abs(j) == LARGENUMBER) {
-					continue;
-				}
+				
 				if (j <= 0){
 					j *= -1;
 					xp1 = xp2_def;
@@ -930,12 +926,12 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 			
 
 	            if (c_top.mon_type[ind] != c_top.mon_type[j]) {
-					U_lat += morse_en(c_par.D_lat / 2, c_par.A_lat, dr); 	//dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr)/dr;
+					U_lat += morse_en(c_par.D_lat / 2, c_par.A_lat, dr); 	
 				}
 	            else {
 	            	U_lat += morse_en(c_par.D_lat, c_par.A_lat, dr);
 	            }
-				//U_lat += (c_par.A_lat * (c_par.b_lat * dr2 * exp(-dr / c_par.r0_lat) - c_par.c_lat * exp(-dr2 / ( c_par.d_lat * c_par.r0_lat))));
+				
 
 
 #if defined(BARR)
@@ -1036,6 +1032,8 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
             
 			d_r[p] = ri;
 		}
+		
+		/*
 		f.x = 0.0f;
 		f.y = 0.0f;
 		f.z = 0.0f;
@@ -1043,6 +1041,7 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 		f.psi = 0.0f;
 		f.theta = 0.0f;
 		d_f[p] = f;
+		*/
 	}
 }
 
@@ -1051,8 +1050,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	Coord* d_r;
 	Coord* d_f;
 	Topology topGPU;
-	//Parameters parGPU;
-
+	
 	cudaSetDevice(par.device);
 	checkCUDAError("device");
 
@@ -1148,24 +1146,47 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	int* mt_len_prev = (int*)malloc(par.Ntr * sizeof(int));
 	//int* delta = (int*)malloc(par.Ntr * sizeof(int))
 
-	
-																														
 	for(long long int step = 0; step < par.steps; step++){
 
 
 		if(step % par.ljpairsupdatefreq == 0){ //pairs update frequency 
-#ifdef LJ_on
+	#ifdef LJ_on
 			//printf("LJPairs are updated");
 			LJ_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
 			checkCUDAError("lj_kernel");
-#endif
+	#endif
 
-#if defined(ASSEMBLY)
+	#if defined(ASSEMBLY)
 
 			pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
             checkCUDAError("pairs_kernel");
+/*
+            cudaMemcpy(top.longitudinal, topGPU.longitudinal, par.Ntot*par.Ntr*topGPU.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
+            cudaMemcpy(top.longitudinalCount, topGPU.longitudinalCount, par.Ntot*sizeof(int), cudaMemcpyDeviceToHost);
+			checkCUDAError("harmonic count copy");
+            for (int i = 0; i < par.Ntot; i ++ ){
+            	printf("%d:\t", i);
+            	for (int k = 0; k < top.harmonicCount[i]; k++){
+            		printf("%d ", top.harmonic[top.maxHarmonicPerMonomer * i + k]);
+            		if (k == 2) printf("=======================================================");
+            	}
+            	printf("\n");
+            }
 
-#endif
+            cudaMemcpy(top.lateral, topGPU.lateral, par.Ntot*par.Ntr*topGPU.maxLateralPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
+            cudaMemcpy(top.lateralCount, topGPU.lateralCount, par.Ntot*sizeof(int), cudaMemcpyDeviceToHost);
+			checkCUDAError("harmonic count copy");
+            for (int i = 0; i < par.Ntot; i ++ ){
+            	//printf("%d:\t", i);
+            	for (int k = 0; k < top.lateralCount[i]; k++){
+            		//printf("%d ", top.longitudinal[top.maxLongitudinalPerMonomer * i + k]);
+            		if (k > 3) printf("=======================================================");
+            	}
+            	//printf("\n");
+            }
+            */
+
+	#endif
 		}
 
 		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
@@ -1174,20 +1195,20 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
 		checkCUDAError("integrate_kernel");
 
-#if defined (OUTPUT_FORCE)
-		cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
-#endif
-
 		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
 
-#ifdef OUTPUT_EN
+	#ifdef OUTPUT_EN
             energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
             checkCUDAError("energy_kernel");
             cudaMemcpy(energies, d_energies, par.Ntr * par.Ntot * sizeof(Energies), cudaMemcpyDeviceToHost);
             checkCUDAError("energy_copy");
-#endif
+	#endif
 			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
 			checkCUDAError("r copy");
+
+	#if defined (OUTPUT_FORCE)
+			cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
+	#endif
 
 #ifdef MT_LENGTH
 			
@@ -1222,7 +1243,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 			}
 
 #endif
-
+		
 #ifndef MT_LENGTH			
 			update(step, mt_len);
 #endif			

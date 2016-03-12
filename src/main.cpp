@@ -144,6 +144,7 @@ void update(long long int step, int* mt_len){
 
 #ifdef OUTPUT_FORCE
     OutputSumForce();
+   OutputForces();
 #endif
 
 #ifdef OUTPUT_EN
@@ -380,9 +381,9 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
 
     top.mon_type = (int*)calloc(par.Ntot, sizeof(int));
     for(i = 0; i < par.Ntot; i++){
-        if(pdb.atoms[i].name == "CA")
+        if(pdb.atoms[i].name[1] == 'A')
             top.mon_type[i] = 0;
-        else if(pdb.atoms[i].name == "CB")
+        else if(pdb.atoms[i].name[1] == 'B')
             top.mon_type[i] = 1;
     }
 
@@ -461,6 +462,8 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
             }
         }
     }
+
+#ifndef ASSEMBLY    
     // Longitudal exponential
     for(i = 0; i < par.Ntot * par.Ntr; i++) top.longitudinalCount[i] = 0;
 
@@ -664,6 +667,8 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
             }
         }
     }
+
+#endif
     
     printf("done building topology without LJ.\n");
 }
@@ -672,17 +677,17 @@ void AssemblyInit()
 {
     free(top.lateral);
     free(top.longitudinal);
+    top.maxLateralPerMonomer = 16;
+    top.maxLongitudinalPerMonomer = 8;
 
-    top.lateral = (int*)calloc(2 * par.Ntot * par.Ntr, sizeof(int));
-    top.longitudinal = (int*)calloc(par.Ntot * par.Ntr, sizeof(int));
+    top.lateral = (int*)calloc(top.maxLateralPerMonomer * par.Ntot * par.Ntr, sizeof(int));
+    top.longitudinal = (int*)calloc(top.maxLongitudinalPerMonomer * par.Ntot * par.Ntr, sizeof(int));
     for(int i = 0; i < par.Ntot * par.Ntr; i++)
     {
         top.longitudinalCount[i] = 0;
-        top.lateralCount[i] = 2;
+        top.lateralCount[i] = 0;
 
     }
-    top.maxLongitudinalPerMonomer = 1;
-    top.maxLateralPerMonomer = 2;
 }
 
 void mt_length(long long int step, int* mt_len){
@@ -695,7 +700,7 @@ void mt_length(long long int step, int* mt_len){
 
             float rad = sqrt(r[i].x * r[i].x + r[i].y * r[i].y);
             if ((rad < R_MT + R_THRES) && (rad > R_MT - R_THRES)) {
-                float theta = 0.0;
+               
             // detect particles inside microtubule 
                 if (cosf(r[i].theta) > cosf(ANG_THRES)){
                     sum++;
@@ -756,18 +761,7 @@ void mt_length(long long int step, int* mt_len){
         
 }
 
-void OutputSumForce(){
-    for(int tr = 0; tr < par.Ntr; tr++){
-        Coord f_sum;
-        f_sum.x = 0; f_sum.y = 0; f_sum.z = 0;
-        for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
-            f_sum.x += f[i].x;
-            f_sum.y += f[i].y;
-            f_sum.z += f[i].z;
-        }
-        printf("SF for %d traj %.16f\n", tr, sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
-    } 
-}
+
 
 void OutputAllEnergies(long long int step){
 
@@ -810,10 +804,27 @@ void OutputAllEnergies(long long int step){
     
 }
 
+void OutputSumForce(){
+    for(int tr = 0; tr < par.Ntr; tr++){
+        Coord f_sum;
+        f_sum.x = 0; f_sum.y = 0; f_sum.z = 0;
+        for(int i = tr * par.Ntot; i < (tr + 1) * par.Ntot; i++){
+            f_sum.x += f[i].x;
+            f_sum.y += f[i].y;
+            f_sum.z += f[i].z;
+        }
+        printf("SF for %d traj %.16f\n", tr, sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
+        //printf("SF for %d traj: %f %f %f \n", tr, f_sum.x, f_sum.y, f_sum.z);// * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
+    } 
+}
+
 void OutputForces(){
 
     for (int i = 0; i < par.Ntot * par.Ntr; i++){
-        printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
+        //printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
+        //if (f[i].theta)
+        printf("Force[%d].theta = %f, fi = %f, psi = %f\n", i, f[i].theta, f[i].fi, f[i].psi);
+        printf("Angle[%d].theta = %f, fi = %f, psi = %f\n", i, r[i].theta, r[i].fi, r[i].psi);
     }
     
 }
