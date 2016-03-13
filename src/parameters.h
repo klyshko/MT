@@ -201,6 +201,7 @@
 #define  REP_H    "rep_h"
 #define  REP_R    "rep_r"
 #define  REP_EPS  "rep_eps"
+#define  REP_LEFTBORDER  "rep_leftborder"
 
  #define ALPHA_GEOMETRY                         "alpha"
  #define FREEZE_TEMP                            "freeze_temp"
@@ -363,6 +364,7 @@ typedef struct {
     real rep_r;
     real rep_eps;
     float zs[32];
+    real rep_leftborder;
 #endif
 #if defined(BARR)
     real a_barr_long;

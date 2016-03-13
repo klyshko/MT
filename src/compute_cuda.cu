@@ -506,13 +506,15 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 #if defined(REPULSIVE)
 
 			
-		    if (ri.z < 0){
+		    if (ri.z < c_par.rep_leftborder){ 
 
-		        fi.z += c_par.rep_eps * fabs(ri.z + c_par.zs[traj]);
-		    } else if (ri.z > c_par.zs[traj]) {
+		        fi.z += c_par.rep_eps * fabs(ri.z - c_par.rep_leftborder);
+		    } else if (ri.z > c_par.zs[traj] + c_par.rep_leftborder) {
 
-		    	fi.z += - c_par.rep_eps * fabs(ri.z - c_par.zs[traj]); // traj = 2
+		    	fi.z += - c_par.rep_eps * fabs(ri.z - (c_par.zs[traj] + c_par.rep_leftborder) );
 		    }
+
+		    //fi.z += - c_par.rep_eps * fabs(ri.z + 100); // traj = 2
 
 		    real rad2 = ri.x * ri.x + ri.y * ri.y;
 		    if (rad2 > c_par.rep_r * c_par.rep_r){

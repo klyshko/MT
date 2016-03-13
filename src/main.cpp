@@ -346,6 +346,7 @@ void initParameters(int argc, char* argv[]){
 #endif
 
 #if defined(REPULSIVE)
+    par.rep_leftborder = getFloatParameter(REP_LEFTBORDER);
     par.rep_h = getFloatParameter(REP_H);
     par.rep_r = getFloatParameter(REP_R);
     par.rep_eps = getFloatParameter(REP_EPS); 
