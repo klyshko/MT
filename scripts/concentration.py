@@ -26,10 +26,10 @@ if len(argv) != 4:
 
 		V = pi * rep_r **2 * rep_h
 		C = 6 * conc * 1e-7
-		print "conc = %f [muMol/L] = %f [1/nm^3]\n" % (conc,C)
+		print "conc = %f [muMol/L] = %f [dimers/nm^3]\n" % (conc,C)
 		print "Volume = %f [nm^3]  - used r = 80, h = 160 by default\n " % V
-		print "Free particles # = %d \n" % int(C * V) 
-		print "Launch python make_mt_cncntr.py %d %d\n" % (int(C * V / 13) + 2, int(C * V / 13) + 2)
+		print "Free particles # (dimers) = %d \n" % int(C * V) 
+		print "Launch python make_mt_cncntr.py %d extra#\n" % ( 2 * (int(C * V / 13) + 1))
 else:		
 		conc  = float(argv[1])
 		rep_r = float(argv[2])
@@ -37,10 +37,10 @@ else:
 
 		V = pi * rep_r **2 * rep_h
 		C = 6 * conc * 1e-7
-		print "\nconc = %f [muMol/L] = %f [1/nm^3]\n" % (conc,C)
+		print "\nconc = %f [muMol/L] = %f [dimers/nm^3]\n" % (conc,C)
 		print "Volume = %f [nm^3]\n " % V
-		print "Free particles # = %d \n" % int(C * V) 
-		print "Launch python make_mt_cncntr.py %d %d\n" % (int(C * V / 13) + 2, int(C * V / 13) + 2)
+		print "Free particles # (dimers) = %d \n" % int(C * V) 
+		print "Launch python make_mt_cncntr.py %d extra#\n" % ( 2 * (int(C * V / 13) + 1))
 		
 print """6) Compile with  LJ and REPULSIVE, no MORSE, no ASSEMBLY, no MT_LENGTH, no CONCentration. 
 7) Simulate *.pdb files for 10 million steps and fix = 2, runnum = 1;

@@ -166,7 +166,7 @@ int change_conc(int* delta, int* mt_len){
             } 
         }
         float Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
-        int Nfree = par.Ntot - mt_len[tr] - num_of_extra;
+        int NFreeDimers = (par.Ntot - mt_len[tr] - num_of_extra) / 2;
 
        
         while (1.0e7 * Nfree / 6.0 < par.conc * Vol){
@@ -185,7 +185,7 @@ int change_conc(int* delta, int* mt_len){
                             break;
                         }
                     }
-                    float z = par.zs[tr] + 3*2*r_mon;
+                    float z = par.zs[tr] + par.rep_leftborder + 3*2*r_mon;
                     r[i + tr * par.Ntot].x = x; //
                     r[i + tr * par.Ntot].y = y;
                     r[i + tr * par.Ntot].z = z; ///fix
@@ -198,14 +198,14 @@ int change_conc(int* delta, int* mt_len){
 
             }
 
-            Nfree += 2;
+            NFreeDimers += 1;
         }
             
            // par.zs[tr] += 2.0 * r_mon * delt / 13.0;
                
         //Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
         //Nfree = par.Ntot - mt_len[tr] - num_of_extra;
-        printf("Concentration for tajectory[%d]: %f [muMole / L],\t %f [1 / nm^3],\t %d [1 / Volume],\t  Volume: %f [nm^3]\n", tr, 1.0e7 * Nfree / (6.0 * Vol), Nfree / Vol, Nfree, Vol);
+        printf("Concentration for tajectory[%d]: %f [muMole / L],\t %f [Dimers / nm^3],\t %d [Dimers / Volume],\t  Volume: %f [nm^3]\n", tr, 1.0e7 * NFreeDimers / (6.0 * Vol), NFreeDimers / Vol, NFreeDimers, Vol);
     }
     return flag;
 }

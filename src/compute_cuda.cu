@@ -570,7 +570,7 @@ __global__ void pairs_kernel(const Coord* d_r){
 		    zi = ri.z;
 
 		    for(int j = 0; j < c_par.Ntot; j++){
-		        if(c_top.harmonic[i] * c_top.harmonic[j] <= 0 && abs(c_top.harmonic[i]) != j ){
+		        if(c_top.mon_type[i] != c_top.mon_type[j] && abs(c_top.harmonic[i]) != j ){ // C_top.mon_type
 		            rj = d_r[j + traj * c_par.Ntot];
 		            cos_fij = cosf(rj.fi);
 		            sin_fij = sinf(rj.fi);
