@@ -1175,7 +1175,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		checkCUDAError("integrate_kernel");
 
 		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
-				///////////////////
+			/*	////////////////////*
 			cudaMemcpy(top.longitudinal, topGPU.longitudinal, par.Ntot*par.Ntr*topGPU.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
             cudaMemcpy(top.longitudinalCount, topGPU.longitudinalCount, par.Ntot*sizeof(int), cudaMemcpyDeviceToHost);
 			checkCUDAError("harmonic count copy");
@@ -1190,7 +1190,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
             	}
             	
             }//////
-
+*/
 	#ifdef OUTPUT_EN
             energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
             checkCUDAError("energy_kernel");
