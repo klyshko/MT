@@ -454,10 +454,10 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
                     pdb.atoms[i].chain == pdb.atoms[j].chain &&
                     (i!=j)  && (abs(i-j) < 2)){
                 if(pdb.atoms[i].id > pdb.atoms[j].id){
-                    top.harmonic[top.maxHarmonicPerMonomer*i + top.harmonicCount[i]] = j; // << BUG: indexation
+                    top.harmonic[top.maxHarmonicPerMonomer*i + top.harmonicCount[i]] = j; 
                 }
                 else{
-                    top.harmonic[top.maxHarmonicPerMonomer*i + top.harmonicCount[i]] = -j; /* BUG: same here */
+                    top.harmonic[top.maxHarmonicPerMonomer*i + top.harmonicCount[i]] = -j; 
                 }
                 top.harmonicCount[i]++;
             }

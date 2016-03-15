@@ -187,7 +187,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 				j = c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + ind * c_top.maxLongitudinalPerMonomer + k];
 				if(j < 0){
 					R_MON = r_mon;
-					j *= -1;
+					j = abs(j);
 				}
 				else {
 					R_MON = -r_mon;
@@ -312,7 +312,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 				if (abs(j) != LARGENUMBER) {
 
 					if(j <= 0){
-						j*=-1;
+						j = abs(j);
 						xp1 = xp2_def;
 						yp1 = yp2_def;
 						zp1 = zp2_def;
@@ -553,8 +553,8 @@ __global__ void pairs_kernel(const Coord* d_r){
 
     	if(!c_top.extra[i + traj * c_par.Ntot]){
 			
-			if(c_top.harmonic[i] < 0)
-		        R_MON = -r_mon;
+			if(c_top.harmonic[c_top.maxHarmonicPerMonomer * i ] < 0) /// c_top.maxHarmonicPerMonomer*ind+k
+		        R_MON = -r_mon; 
 		    else
 		        R_MON = r_mon;
 		        
@@ -570,7 +570,7 @@ __global__ void pairs_kernel(const Coord* d_r){
 		    zi = ri.z;
 
 		    for(int j = 0; j < c_par.Ntot; j++){
-		        if(c_top.mon_type[i] != c_top.mon_type[j] && abs(c_top.harmonic[i]) != j ){ // C_top.mon_type
+		        if(c_top.mon_type[i] != c_top.mon_type[j] && abs(c_top.harmonic[c_top.maxHarmonicPerMonomer * i]) != j ){ // C_top.mon_type
 		            rj = d_r[j + traj * c_par.Ntot];
 		            cos_fij = cosf(rj.fi);
 		            sin_fij = sinf(rj.fi);
@@ -593,7 +593,7 @@ __global__ void pairs_kernel(const Coord* d_r){
 
 		            if(dr < PAIR_CUTOFF){
 		            	
-		            	if(c_top.harmonic[i] < 0)
+		            	if(c_top.harmonic[c_top.maxHarmonicPerMonomer * i] < 0)
 		                    c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + i * c_top.maxLongitudinalPerMonomer + c_top.longitudinalCount[i + traj * c_par.Ntot]] = j;
 		                else
 		                    c_top.longitudinal[c_top.maxLongitudinalPerMonomer * c_par.Ntot * traj + i * c_top.maxLongitudinalPerMonomer + c_top.longitudinalCount[i + traj * c_par.Ntot]] = -j;
@@ -617,7 +617,7 @@ __global__ void pairs_kernel(const Coord* d_r){
 		    //float curMinDistArr[2] = {PAIR_CUTOFF, PAIR_CUTOFF};
 		    
 		    for(int j = 0; j < c_par.Ntot; j++){
-		        if (i != j){// && c_top.mon_type[i] == c_top.mon_type[j]) {
+		        if (i != j && abs(c_top.harmonic[c_top.maxHarmonicPerMonomer * i]) != j){// && c_top.mon_type[i] == c_top.mon_type[j]) {
 
 		        	rj = d_r[j + traj * c_par.Ntot];
 		            xj = rj.x;    
@@ -1013,24 +1013,12 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 			ri.x += (c_par.dt/c_par.gammaR)*f.x + c_par.varR*rf_xyz.x;
 			ri.y += (c_par.dt/c_par.gammaR)*f.y + c_par.varR*rf_xyz.y;
 			ri.z += (c_par.dt/c_par.gammaR)*f.z + c_par.varR*rf_xyz.z;
-#ifndef REDUCE_TO_2D
+
             // Disallow rotations in all directions but theta
 			ri.fi    += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.fi  + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.x;
 			ri.psi   += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.psi + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.y;
-#endif
 			ri.theta += (c_par.dt/c_par.gammaTheta)*f.theta + c_par.varTheta*rf_ang.z;
-#ifdef REDUCE_TO_2D
-            // Here, we move monomers back to respective PF plane
-            // It is very kludgy solution. Probably, the kludgiest of all solutions ever existed
-            // But I don't actually care. It was introduced for testing purposes only
-            const int pf = (p % c_par.Ntot) / (c_par.Ntot / 13); // PF index = monomer_index / monomers_per_pf
-//            printf("%d %d %d\n", p, p % c_par.Ntot, pf);
-            const float a = -2*3.14159 * pf / 13;
-//            const float rxy = sqrtf(ri.x*ri.x + ri.y*ri.y);
-            const float rcosd = ri.y * sinf(a) + ri.x * cosf(a);  // = cos(phi-a) * rxy
-            ri.x = rcosd * cosf(a);
-            ri.y = rcosd * sinf(a);
-#endif
+
             
 			d_r[p] = ri;
 		}
@@ -1111,13 +1099,12 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	checkCUDAError("topGPU.fixed allocation");
 	cudaMalloc((void**)&(topGPU.mon_type), par.Ntot*sizeof(int));
 	checkCUDAError("d_mon_type allocation");
+	cudaMalloc((void**)&(topGPU.extra), par.Ntr * par.Ntot*sizeof(bool));
+	checkCUDAError("topGPU.extra allocation");
 	cudaMemcpy(topGPU.fixed, top.fixed, par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
 	checkCUDAError("fixed copy");
 	cudaMemcpy(topGPU.mon_type, top.mon_type, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("montype copy");
-
-	cudaMalloc((void**)&(topGPU.extra), par.Ntr * par.Ntot*sizeof(bool));
-	checkCUDAError("topGPU.extra allocation");
 	cudaMemcpy(topGPU.extra, top.extra, par.Ntr * par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
 	checkCUDAError("extra copy");
 
@@ -1162,19 +1149,9 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 			pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
             checkCUDAError("pairs_kernel");
-/*
-            cudaMemcpy(top.longitudinal, topGPU.longitudinal, par.Ntot*par.Ntr*topGPU.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
-            cudaMemcpy(top.longitudinalCount, topGPU.longitudinalCount, par.Ntot*sizeof(int), cudaMemcpyDeviceToHost);
-			checkCUDAError("harmonic count copy");
-            for (int i = 0; i < par.Ntot; i ++ ){
-            	printf("%d:\t", i);
-            	for (int k = 0; k < top.harmonicCount[i]; k++){
-            		printf("%d ", top.harmonic[top.maxHarmonicPerMonomer * i + k]);
-            		if (k == 2) printf("=======================================================");
-            	}
-            	printf("\n");
-            }
 
+            
+/*
             cudaMemcpy(top.lateral, topGPU.lateral, par.Ntot*par.Ntr*topGPU.maxLateralPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
             cudaMemcpy(top.lateralCount, topGPU.lateralCount, par.Ntot*sizeof(int), cudaMemcpyDeviceToHost);
 			checkCUDAError("harmonic count copy");
@@ -1198,6 +1175,21 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		checkCUDAError("integrate_kernel");
 
 		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
+				///////////////////
+			cudaMemcpy(top.longitudinal, topGPU.longitudinal, par.Ntot*par.Ntr*topGPU.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
+            cudaMemcpy(top.longitudinalCount, topGPU.longitudinalCount, par.Ntot*sizeof(int), cudaMemcpyDeviceToHost);
+			checkCUDAError("harmonic count copy");
+            for (int i = 0; i < par.Ntot; i ++ ){
+            	if (top.longitudinalCount[i] > 0 && !top.fixed[i]){
+            		printf("%d:\t", i);
+	            	for (int k = 0; k < top.longitudinalCount[i]; k++){
+	            		printf("%d ", top.longitudinal[top.maxLongitudinalPerMonomer * i + k]);
+	            		if (k == 2) printf("=======================================================");
+	            	}
+	            	printf("\n");
+            	}
+            	
+            }//////
 
 	#ifdef OUTPUT_EN
             energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
