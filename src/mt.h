@@ -34,7 +34,7 @@
 
 #define KB 0.0019872041f //kcal/(mol*K)
 
-#define ANGLE_CUTOFF 1.0f
+#define ANGLE_CUTOFF 0.5f
 
 #define xp1_def (0.5f*R_MT*(cosf(2.0f*M_PI/13.0f) - 1.0f))
 #define yp1_def (0.5f*R_MT*sinf(2.0f*M_PI/13.0f))

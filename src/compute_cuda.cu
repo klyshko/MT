@@ -19,8 +19,6 @@
 extern void update(long long int step, int* mt_len);
 extern int change_conc(int* delta, int* mt_len);
 extern void mt_length(long long int step, int* mt_len);
-extern void UpdateLJPairs();
-extern void UpdatePairs();
 
 __device__ __constant__ Parameters c_par;
 __device__ __constant__ Topology c_top;
@@ -283,7 +281,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	                    fi.theta += c_par.B_theta	*	(thetaji 	- c_par.theta_0	);
 	                }
 	                else{
-	                    fi.psi   -= c_par.B_psi		*	(psiij	- 	c_par.psi_0	);
+	                    fi.psi   -= c_par.B_psi		*	(psiij		- c_par.psi_0	);
 	                    fi.fi	 -= c_par.B_fi		*	(fiij 		- c_par.fi_0	);
 	                    fi.theta -= c_par.B_theta	*	(thetaij 	- c_par.theta_0	);
 	                }
@@ -309,167 +307,166 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 #if defined(MORSE)
 			for(int k = 0; k < c_top.lateralCount[ind + traj * c_par.Ntot]; k++){
 				j = c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + ind * c_top.maxLateralPerMonomer + k];//c_top.maxLateralPerMonomer*ind+k];
-				if (abs(j) != LARGENUMBER) {
+				
 
-					if(j <= 0){
-						j = abs(j);
-						xp1 = xp2_def;
-						yp1 = yp2_def;
-						zp1 = zp2_def;
-						xp2 = xp1_def;
-						yp2 = yp1_def;
-						zp2 = zp1_def;
-					} else {
-						xp1 = xp1_def;
-						yp1 = yp1_def;
-						zp1 = zp1_def;
-						xp2 = xp2_def;
-						yp2 = yp2_def;
-						zp2 = zp2_def;
-					}
-
-					rj = d_r[j + traj*c_par.Ntot];
-					cos_fij = cosf(rj.fi);
-					sin_fij = sinf(rj.fi);
-					cos_psij = cosf(rj.psi);
-					sin_psij = sinf(rj.psi);
-					cos_thetaj = cosf(rj.theta);
-					sin_thetaj = sinf(rj.theta);
-					xj = rj.x;
-					yj = rj.y;
-					zj = rj.z;
-					
-					dr = sqrtf(pow(zi - zj + zp2 * cos_fii * cos_thetai -
-				 		zp1 * cos_fij * cos_thetaj + yp2 * cos_thetai * sin_fii -
-				 		yp1 * cos_thetaj * sin_fij - xp2 * sin_thetai + xp1 * sin_thetaj,2) +
-			   			pow(xi - xj - yp2 * cos_fii * sin_psii + zp2 * sin_fii * sin_psii +
-				  		yp1 * cos_fij * sin_psij - zp1 * sin_fij * sin_psij +
-					 	cos_psii * (xp2 * cos_thetai + zp2 * cos_fii * sin_thetai +
-						yp2 * sin_fii * sin_thetai) - cos_psij * (xp1 * cos_thetaj + zp1 * cos_fij * sin_thetaj +
-				   		yp1 * sin_fij * sin_thetaj),2) +
-						pow(yi - yj - zp2 * cos_psii * sin_fii + zp1 * cos_psij * sin_fij +
-						xp2 * cos_thetai * sin_psii - xp1 * cos_thetaj * sin_psij +
-						yp2 * sin_fii * sin_psii * sin_thetai +
-						cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai) -
-						yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
-						zp1 * sin_psij * sin_thetaj),2));
-
-					gradx = -((-xi + xj - xp2*cos_psii*cos_thetai +
-						  xp1*cos_psij*cos_thetaj -
-						  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
-						  yp2*(-cos_fii*sin_psii + cos_psii*sin_fii*sin_thetai) +
-						  zp1*(sin_fij*sin_psij + cos_fij*cos_psij*sin_thetaj) +
-						  yp1*(-cos_fij*sin_psij +
-							 cos_psij*sin_fij*sin_thetaj)));
-
-
-					grady = -((-yi + yj -
-						  xp2*cos_thetai*sin_psii + xp1*cos_thetaj*sin_psij -
-						  zp2*(-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
-						  yp2*(cos_fii*cos_psii + sin_fii*sin_psii*sin_thetai) +
-						  zp1*(-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj) +
-						  yp1*(cos_fij*cos_psij +
-							 sin_fij*sin_psij*sin_thetaj)));
-
-
-					gradz = -((-zi + zj -
-						  zp2*cos_fii*cos_thetai + zp1*cos_fij*cos_thetaj -
-						  yp2*cos_thetai*sin_fii + yp1*cos_thetaj*sin_fij +
-						  xp2*sin_thetai - xp1*sin_thetaj));
-
-
-					gradtheta = ((-zi + zj - zp2*cos_fii*cos_thetai + zp1*cos_fij*cos_thetaj - yp2*cos_thetai*sin_fii + yp1*cos_thetaj*sin_fij +
-						  xp2*sin_thetai - xp1*sin_thetaj)*(xp2*cos_thetai +
-						  zp2*cos_fii*sin_thetai + yp2*sin_fii*sin_thetai) +
-						 (-xi + xj - xp2*cos_psii*cos_thetai +
-						  xp1*cos_psij*cos_thetaj -
-						  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
-						  yp2*(-cos_fii*sin_psii + cos_psii*sin_fii*sin_thetai) +
-						  zp1*(sin_fij*sin_psij + cos_fij*cos_psij*sin_thetaj) +
-						  yp1*(-cos_fij*sin_psij + cos_psij*sin_fij*sin_thetaj))*(-zp2*cos_fii*cos_psii*cos_thetai - yp2*cos_psii*cos_thetai*sin_fii +
-						  xp2*cos_psii*sin_thetai) +
-						(-yi + yj - xp2*cos_thetai*sin_psii +
-						  xp1*cos_thetaj*sin_psij -
-						  zp2*(-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
-						  yp2*(cos_fii*cos_psii + sin_fii*sin_psii*sin_thetai) +
-						  zp1*(-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj) +
-						  yp1*(cos_fij*cos_psij +
-							 sin_fij*sin_psij*sin_thetaj))*(-zp2*cos_fii*cos_thetai*sin_psii - yp2*cos_thetai*sin_fii*sin_psii +
-						  xp2*sin_psii*sin_thetai));
-
-
-					gradpsi = ( (-xi + xj -
-						  xp2*cos_psii*cos_thetai + xp1*cos_psij*cos_thetaj -
-						  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
-						  yp2*(-cos_fii*sin_psii + cos_psii*sin_fii*sin_thetai) +
-						  zp1*(sin_fij*sin_psij + cos_fij*cos_psij*sin_thetaj) +
-						  yp1*(-cos_fij*sin_psij +
-							 cos_psij*sin_fij*sin_thetaj))*(xp2*cos_thetai*sin_psii -
-						   zp2*(cos_psii*sin_fii - cos_fii*sin_psii*sin_thetai) -
-						  yp2*(-cos_fii*cos_psii -
-							 sin_fii*sin_psii*sin_thetai)) +
-						(-yi + yj - xp2*cos_thetai*sin_psii +
-						  xp1*cos_thetaj*sin_psij -
-						  zp2*(-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
-						  yp2*(cos_fii*cos_psii + sin_fii*sin_psii*sin_thetai) +
-						  zp1*(-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj) +
-						  yp1*(cos_fij*cos_psij +
-							 sin_fij*sin_psij*sin_thetaj))*(-xp2*cos_psii*cos_thetai -
-						  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
-						  yp2*(-cos_fii*sin_psii +
-							 cos_psii*sin_fii*sin_thetai)));
-
-
-					gradfi = ( (-zi + zj -
-						  zp2*cos_fii*cos_thetai + zp1*cos_fij*cos_thetaj -
-						  yp2*cos_thetai*sin_fii + yp1*cos_thetaj*sin_fij +
-						  xp2*sin_thetai - xp1*sin_thetaj)*(-yp2*cos_fii*cos_thetai +
-						  zp2*cos_thetai*sin_fii) +
-						(-xi + xj - xp2*cos_psii*cos_thetai +
-						  xp1*cos_psij*cos_thetaj -
-						  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
-						  yp2*(-cos_fii*sin_psii + cos_psii*sin_fii*sin_thetai) +
-						  zp1*(sin_fij*sin_psij + cos_fij*cos_psij*sin_thetaj) +
-						  yp1*(-cos_fij*sin_psij +
-							 cos_psij*sin_fij*sin_thetaj))*(-yp2*(sin_fii*sin_psii +
-							 cos_fii*cos_psii*sin_thetai) -
-						  zp2*(cos_fii*sin_psii -
-							 cos_psii*sin_fii*sin_thetai)) +
-						(-yi + yj - xp2*cos_thetai*sin_psii +
-						  xp1*cos_thetaj*sin_psij -
-						  zp2*(-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
-						  yp2*(cos_fii*cos_psii + sin_fii*sin_psii*sin_thetai) +
-						  zp1*(-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj) +
-						  yp1*(cos_fij*cos_psij +
-							 sin_fij*sin_psij*sin_thetaj))*(-yp2*(-cos_psii*sin_fii +
-							  cos_fii*sin_psii*sin_thetai) -
-						  zp2*(-cos_fii*cos_psii -
-							 sin_fii*sin_psii*sin_thetai)));
-
-
-
-					if (dr == 0) dUdr = 0.0;
-					else if (c_top.mon_type[ind] != c_top.mon_type[j]) {
-						dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr) / dr;
-					}
-		            else {
-		            	dUdr = dmorse(c_par.D_lat, c_par.A_lat, dr) / dr;
-		            }
-		            
-
-#if defined(BARR)
-				if (dr != 0) 
-	            dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr) / dr;
-#endif
-
-					fi.x     += -dUdr*gradx;
-					fi.y     += -dUdr*grady;
-					fi.z     += -dUdr*gradz;
-					fi.fi    += -dUdr*gradfi;
-					fi.psi   += -dUdr*gradpsi;
-					fi.theta += -dUdr*gradtheta;
+				if(j <= 0){
+					j = abs(j);
+					xp1 = xp2_def;
+					yp1 = yp2_def;
+					zp1 = zp2_def;
+					xp2 = xp1_def;
+					yp2 = yp1_def;
+					zp2 = zp1_def;
+				} else {
+					xp1 = xp1_def;
+					yp1 = yp1_def;
+					zp1 = zp1_def;
+					xp2 = xp2_def;
+					yp2 = yp2_def;
+					zp2 = zp2_def;
 				}
 
+				rj = d_r[j + traj*c_par.Ntot];
+				cos_fij = cosf(rj.fi);
+				sin_fij = sinf(rj.fi);
+				cos_psij = cosf(rj.psi);
+				sin_psij = sinf(rj.psi);
+				cos_thetaj = cosf(rj.theta);
+				sin_thetaj = sinf(rj.theta);
+				xj = rj.x;
+				yj = rj.y;
+				zj = rj.z;
+				
+				dr = sqrtf(pow(zi - zj + zp2 * cos_fii * cos_thetai -
+			 		zp1 * cos_fij * cos_thetaj + yp2 * cos_thetai * sin_fii -
+			 		yp1 * cos_thetaj * sin_fij - xp2 * sin_thetai + xp1 * sin_thetaj,2) +
+		   			pow(xi - xj - yp2 * cos_fii * sin_psii + zp2 * sin_fii * sin_psii +
+			  		yp1 * cos_fij * sin_psij - zp1 * sin_fij * sin_psij +
+				 	cos_psii * (xp2 * cos_thetai + zp2 * cos_fii * sin_thetai +
+					yp2 * sin_fii * sin_thetai) - cos_psij * (xp1 * cos_thetaj + zp1 * cos_fij * sin_thetaj +
+			   		yp1 * sin_fij * sin_thetaj),2) +
+					pow(yi - yj - zp2 * cos_psii * sin_fii + zp1 * cos_psij * sin_fij +
+					xp2 * cos_thetai * sin_psii - xp1 * cos_thetaj * sin_psij +
+					yp2 * sin_fii * sin_psii * sin_thetai +
+					cos_fii * (yp2 * cos_psii + zp2 * sin_psii * sin_thetai) -
+					yp1 * sin_fij * sin_psij * sin_thetaj - cos_fij * (yp1 * cos_psij +
+					zp1 * sin_psij * sin_thetaj),2));
+
+				gradx = -((-xi + xj - xp2*cos_psii*cos_thetai +
+					  xp1*cos_psij*cos_thetaj -
+					  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
+					  yp2*(-cos_fii*sin_psii + cos_psii*sin_fii*sin_thetai) +
+					  zp1*(sin_fij*sin_psij + cos_fij*cos_psij*sin_thetaj) +
+					  yp1*(-cos_fij*sin_psij +
+						 cos_psij*sin_fij*sin_thetaj)));
+
+
+				grady = -((-yi + yj -
+					  xp2*cos_thetai*sin_psii + xp1*cos_thetaj*sin_psij -
+					  zp2*(-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
+					  yp2*(cos_fii*cos_psii + sin_fii*sin_psii*sin_thetai) +
+					  zp1*(-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj) +
+					  yp1*(cos_fij*cos_psij +
+						 sin_fij*sin_psij*sin_thetaj)));
+
+
+				gradz = -((-zi + zj -
+					  zp2*cos_fii*cos_thetai + zp1*cos_fij*cos_thetaj -
+					  yp2*cos_thetai*sin_fii + yp1*cos_thetaj*sin_fij +
+					  xp2*sin_thetai - xp1*sin_thetaj));
+
+
+				gradtheta = ((-zi + zj - zp2*cos_fii*cos_thetai + zp1*cos_fij*cos_thetaj - yp2*cos_thetai*sin_fii + yp1*cos_thetaj*sin_fij +
+					  xp2*sin_thetai - xp1*sin_thetaj)*(xp2*cos_thetai +
+					  zp2*cos_fii*sin_thetai + yp2*sin_fii*sin_thetai) +
+					 (-xi + xj - xp2*cos_psii*cos_thetai +
+					  xp1*cos_psij*cos_thetaj -
+					  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
+					  yp2*(-cos_fii*sin_psii + cos_psii*sin_fii*sin_thetai) +
+					  zp1*(sin_fij*sin_psij + cos_fij*cos_psij*sin_thetaj) +
+					  yp1*(-cos_fij*sin_psij + cos_psij*sin_fij*sin_thetaj))*(-zp2*cos_fii*cos_psii*cos_thetai - yp2*cos_psii*cos_thetai*sin_fii +
+					  xp2*cos_psii*sin_thetai) +
+					(-yi + yj - xp2*cos_thetai*sin_psii +
+					  xp1*cos_thetaj*sin_psij -
+					  zp2*(-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
+					  yp2*(cos_fii*cos_psii + sin_fii*sin_psii*sin_thetai) +
+					  zp1*(-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj) +
+					  yp1*(cos_fij*cos_psij +
+						 sin_fij*sin_psij*sin_thetaj))*(-zp2*cos_fii*cos_thetai*sin_psii - yp2*cos_thetai*sin_fii*sin_psii +
+					  xp2*sin_psii*sin_thetai));
+
+
+				gradpsi = ( (-xi + xj -
+					  xp2*cos_psii*cos_thetai + xp1*cos_psij*cos_thetaj -
+					  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
+					  yp2*(-cos_fii*sin_psii + cos_psii*sin_fii*sin_thetai) +
+					  zp1*(sin_fij*sin_psij + cos_fij*cos_psij*sin_thetaj) +
+					  yp1*(-cos_fij*sin_psij +
+						 cos_psij*sin_fij*sin_thetaj))*(xp2*cos_thetai*sin_psii -
+					   zp2*(cos_psii*sin_fii - cos_fii*sin_psii*sin_thetai) -
+					  yp2*(-cos_fii*cos_psii -
+						 sin_fii*sin_psii*sin_thetai)) +
+					(-yi + yj - xp2*cos_thetai*sin_psii +
+					  xp1*cos_thetaj*sin_psij -
+					  zp2*(-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
+					  yp2*(cos_fii*cos_psii + sin_fii*sin_psii*sin_thetai) +
+					  zp1*(-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj) +
+					  yp1*(cos_fij*cos_psij +
+						 sin_fij*sin_psij*sin_thetaj))*(-xp2*cos_psii*cos_thetai -
+					  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
+					  yp2*(-cos_fii*sin_psii +
+						 cos_psii*sin_fii*sin_thetai)));
+
+
+				gradfi = ( (-zi + zj -
+					  zp2*cos_fii*cos_thetai + zp1*cos_fij*cos_thetaj -
+					  yp2*cos_thetai*sin_fii + yp1*cos_thetaj*sin_fij +
+					  xp2*sin_thetai - xp1*sin_thetaj)*(-yp2*cos_fii*cos_thetai +
+					  zp2*cos_thetai*sin_fii) +
+					(-xi + xj - xp2*cos_psii*cos_thetai +
+					  xp1*cos_psij*cos_thetaj -
+					  zp2*(sin_fii*sin_psii + cos_fii*cos_psii*sin_thetai) -
+					  yp2*(-cos_fii*sin_psii + cos_psii*sin_fii*sin_thetai) +
+					  zp1*(sin_fij*sin_psij + cos_fij*cos_psij*sin_thetaj) +
+					  yp1*(-cos_fij*sin_psij +
+						 cos_psij*sin_fij*sin_thetaj))*(-yp2*(sin_fii*sin_psii +
+						 cos_fii*cos_psii*sin_thetai) -
+					  zp2*(cos_fii*sin_psii -
+						 cos_psii*sin_fii*sin_thetai)) +
+					(-yi + yj - xp2*cos_thetai*sin_psii +
+					  xp1*cos_thetaj*sin_psij -
+					  zp2*(-cos_psii*sin_fii + cos_fii*sin_psii*sin_thetai) -
+					  yp2*(cos_fii*cos_psii + sin_fii*sin_psii*sin_thetai) +
+					  zp1*(-cos_psij*sin_fij + cos_fij*sin_psij*sin_thetaj) +
+					  yp1*(cos_fij*cos_psij +
+						 sin_fij*sin_psij*sin_thetaj))*(-yp2*(-cos_psii*sin_fii +
+						  cos_fii*sin_psii*sin_thetai) -
+					  zp2*(-cos_fii*cos_psii -
+						 sin_fii*sin_psii*sin_thetai)));
+
+
+
+				if (dr == 0) dUdr = 0.0;
+				else if (c_top.mon_type[ind] != c_top.mon_type[j]) {
+					dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr) / dr;
+				}
+	            else {
+	            	dUdr = dmorse(c_par.D_lat, c_par.A_lat, dr) / dr;
+	            }
+	            
+
+#if defined(BARR)
+			if (dr != 0) 
+            dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr) / dr;
+#endif
+
+				fi.x     += -dUdr*gradx;
+				fi.y     += -dUdr*grady;
+				fi.z     += -dUdr*gradz;
+				fi.fi    += -dUdr*gradfi;
+				fi.psi   += -dUdr*gradpsi;
+				fi.theta += -dUdr*gradtheta;
+			
 			}
 #endif
 

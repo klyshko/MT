@@ -169,7 +169,7 @@ int change_conc(int* delta, int* mt_len){
         int NFreeDimers = (par.Ntot - mt_len[tr] - num_of_extra) / 2;
 
        
-        while (1.0e7 * Nfree / 6.0 < par.conc * Vol){
+        while (1.0e7 * NfreeDimers / 6.0 < par.conc * Vol){
             for(int i = 0; i < par.Ntot; i+=2){
                 if (top.extra[i + tr * par.Ntot] && top.mon_type[i] == 0){
                     top.extra[i + tr * par.Ntot] = false;
