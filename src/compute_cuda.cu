@@ -152,23 +152,29 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			
 	            if(dr < ANGLE_CUTOFF )
 	            {
-	            	psiji = rj.psi - ri.psi - 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
+	            	/*psiji = rj.psi - ri.psi - 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
 	                psiij = - psiji;
 	            	thetaji = rj.theta - ri.theta - 2 * M_PI * (int)((rj.theta - ri.theta)/(2 * M_PI));
 	            	thetaij = - thetaji;
 	              	fiji = rj.fi - ri.fi - 2 * M_PI * (int)((rj.fi - ri.fi)/(2 * M_PI));
 	                fiij = - fiji;
+	*/				psiji = rj.psi - ri.psi;
+	                psiij = - psiji;
+	            	thetaji = rj.theta - ri.theta;
+	            	thetaij = - thetaji;
+	              	fiji = rj.fi - ri.fi;
+	                fiij = - fiji;
 	                
 	                if(R_MON > 0){
 
-	                    fi.psi   += c_par.B_psi		*	(psiji 		- c_par.psi_0	);
-	                    fi.fi	 += c_par.B_fi		*	(fiji 		- c_par.fi_0	);
-	                    fi.theta += c_par.B_theta	*	(thetaji 	- c_par.theta_0	);
+	                    fi.psi   += c_par.B_psi		*	sinf(psiji 		- c_par.psi_0);
+	                    fi.fi	 += c_par.B_fi		*	sinf(fiji 		- c_par.fi_0	);
+	                    fi.theta += c_par.B_theta	*	sinf(thetaji 	- c_par.theta_0	);
 	                }
 	                else{
-	                    fi.psi   -= c_par.B_psi		*	(psiij	- 	c_par.psi_0	);
-	                    fi.fi	 -= c_par.B_fi		*	(fiij 		- c_par.fi_0	);
-	                    fi.theta -= c_par.B_theta	*	(thetaij 	- c_par.theta_0	);
+	                    fi.psi   -= c_par.B_psi		*	sinf(psiij	- 	c_par.psi_0	);
+	                    fi.fi	 -= c_par.B_fi		*	sinf(fiij 		- c_par.fi_0	);
+	                    fi.theta -= c_par.B_theta	*	sinf(thetaij 	- c_par.theta_0	);
 	                }
 	                
 	              	
@@ -267,23 +273,23 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	            if(dr < ANGLE_CUTOFF )
 	            {
 	            	
-	            	psiji = rj.psi - ri.psi - 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
+	            	psiji = rj.psi - ri.psi;
 	                psiij = - psiji;
-	            	thetaji = rj.theta - ri.theta - 2 * M_PI * (int)((rj.theta - ri.theta)/(2 * M_PI));
+	            	thetaji = rj.theta - ri.theta;
 	            	thetaij = - thetaji;
-	              	fiji = rj.fi - ri.fi - 2 * M_PI * (int)((rj.fi - ri.fi)/(2 * M_PI));
+	              	fiji = rj.fi - ri.fi;
 	                fiij = - fiji;
 	                
-	                 if(R_MON > 0){
+	                if(R_MON > 0){
 
-	                    fi.psi   += c_par.B_psi		*	(psiji 		- c_par.psi_0	);
-	                    fi.fi	 += c_par.B_fi		*	(fiji 		- c_par.fi_0	);
-	                    fi.theta += c_par.B_theta	*	(thetaji 	- c_par.theta_0	);
+	                    fi.psi   += c_par.B_psi		*	sinf(psiji 		- c_par.psi_0);
+	                    fi.fi	 += c_par.B_fi		*	sinf(fiji 		- c_par.fi_0	);
+	                    fi.theta += c_par.B_theta	*	sinf(thetaji 	- c_par.theta_0	);
 	                }
 	                else{
-	                    fi.psi   -= c_par.B_psi		*	(psiij		- c_par.psi_0	);
-	                    fi.fi	 -= c_par.B_fi		*	(fiij 		- c_par.fi_0	);
-	                    fi.theta -= c_par.B_theta	*	(thetaij 	- c_par.theta_0	);
+	                    fi.psi   -= c_par.B_psi		*	sinf(psiij	- 	c_par.psi_0	);
+	                    fi.fi	 -= c_par.B_fi		*	sinf(fiij 		- c_par.fi_0	);
+	                    fi.theta -= c_par.B_theta	*	sinf(thetaij 	- c_par.theta_0	);
 	                }
 	              	/*
 	                if(R_MON > 0){
@@ -768,22 +774,22 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 
 	            if(dr < ANGLE_CUTOFF){
 
-	            	psiji = rj.psi - ri.psi - 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
+	            	psiji = rj.psi - ri.psi;
 	                psiij = - psiji;
-	            	thetaji = rj.theta - ri.theta - 2 * M_PI * (int)((rj.theta - ri.theta)/(2 * M_PI));
+	            	thetaji = rj.theta - ri.theta;
 	            	thetaij = - thetaji;
-	              	fiji = rj.fi - ri.fi - 2 * M_PI * (int)((rj.fi - ri.fi)/(2 * M_PI));
+	              	fiji = rj.fi - ri.fi;
 	                fiij = - fiji;
 
 	              	if(R_MON > 0){
-	                    U_psi  	 += c_par.B_psi		/2	*	pow(psiji 		- c_par.psi_0		,2);
-	                    U_fi	 += c_par.B_fi		/2	*	pow(fiji 		- c_par.fi_0		,2);
-	                    U_teta	 += c_par.B_theta	/2	*	pow(thetaji 	- c_par.theta_0		,2);
+	                    U_psi  	 += c_par.B_psi	 	* (1 - cosf(psiji 		- c_par.psi_0))		;
+	                    U_fi	 += c_par.B_fi	 	* (1 - cosf(fiji 		- c_par.fi_0))		;
+	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaji 	- c_par.theta_0))   ;
 	                }
 	                else{
-	                    U_psi  	 += c_par.B_psi	  	/2	*	pow(psiij 		- c_par.psi_0		,2);
-	                    U_fi	 += c_par.B_fi	  	/2	*	pow(fiij 		- c_par.fi_0		,2);
-	                    U_teta	 += c_par.B_theta	/2	*	pow(thetaij 	- c_par.theta_0		,2);
+	                    U_psi  	 += c_par.B_psi	  	* (1 - cosf(psiij 		- c_par.psi_0))		;
+	                    U_fi	 += c_par.B_fi	  	* (1 - cosf(fiij 		- c_par.fi_0))		;
+	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaij 	- c_par.theta_0))   ;
 	                }
 	              	/*
 	                if(R_MON > 0){
@@ -840,22 +846,22 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 #endif
 				if(dr < ANGLE_CUTOFF){
 
-	            	psiji = rj.psi - ri.psi - 2 * M_PI * (int)((rj.psi - ri.psi)/(2 * M_PI));
+	            	psiji = rj.psi - ri.psi;
 	                psiij = - psiji;
-	            	thetaji = rj.theta - ri.theta - 2 * M_PI * (int)((rj.theta - ri.theta)/(2 * M_PI));
+	            	thetaji = rj.theta - ri.theta;
 	            	thetaij = - thetaji;
-	              	fiji = rj.fi - ri.fi - 2 * M_PI * (int)((rj.fi - ri.fi)/(2 * M_PI));
+	              	fiji = rj.fi - ri.fi;
 	                fiij = - fiji;
 
 	              	if(R_MON > 0){
-	                    U_psi  	 += c_par.B_psi		/2	*	pow(psiji 		- c_par.psi_0		,2);
-	                    U_fi	 += c_par.B_fi		/2	*	pow(fiji 		- c_par.fi_0		,2);
-	                    U_teta	 += c_par.B_theta	/2	*	pow(thetaji 	- c_par.theta_0		,2);
+	                    U_psi  	 += c_par.B_psi	 	* (1 - cosf(psiji 		- c_par.psi_0))		;
+	                    U_fi	 += c_par.B_fi	 	* (1 - cosf(fiji 		- c_par.fi_0))		;
+	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaji 	- c_par.theta_0))   ;
 	                }
 	                else{
-	                    U_psi  	 += c_par.B_psi	  	/2	*	pow(psiij 		- c_par.psi_0		,2);
-	                    U_fi	 += c_par.B_fi	  	/2	*	pow(fiij 		- c_par.fi_0		,2);
-	                    U_teta	 += c_par.B_theta	/2	*	pow(thetaij 	- c_par.theta_0		,2);
+	                    U_psi  	 += c_par.B_psi	  	* (1 - cosf(psiij 		- c_par.psi_0))		;
+	                    U_fi	 += c_par.B_fi	  	* (1 - cosf(fiij 		- c_par.fi_0))		;
+	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaij 	- c_par.theta_0))   ;
 	                }
 	              	/*
 	                if(R_MON > 0){
@@ -1011,10 +1017,14 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 			ri.y += (c_par.dt/c_par.gammaR)*f.y + c_par.varR*rf_xyz.y;
 			ri.z += (c_par.dt/c_par.gammaR)*f.z + c_par.varR*rf_xyz.z;
 
-            // Disallow rotations in all directions but theta
+            
 			ri.fi    += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.fi  + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.x;
 			ri.psi   += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.psi + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.y;
 			ri.theta += (c_par.dt/c_par.gammaTheta)*f.theta + c_par.varTheta*rf_ang.z;
+
+			//ri.fi -= (2 * M_PI) * (int)(ri.fi / (2 * M_PI));
+            //ri.psi -= (2 * M_PI) * (int)(ri.psi / (2 * M_PI));
+            //ri.theta -= (2 * M_PI) * (int)(ri.theta / (2 * M_PI));
 
             
 			d_r[p] = ri;
@@ -1054,6 +1064,14 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		f[i].x = 0.0f;
 		f[i].y = 0.0f;
 		f[i].z = 0.0f;
+	}
+
+	for(int i = 0; i < par.Ntot*par.Ntr; i++){
+		
+		r[i].fi -= (2 * M_PI) * (int)(r[i].fi / (2 * M_PI));
+        r[i].psi -= (2 * M_PI) * (int)(r[i].psi / (2 * M_PI));
+        r[i].theta -= (2 * M_PI) * (int)(r[i].theta / (2 * M_PI));
+        
 	}
 
 
