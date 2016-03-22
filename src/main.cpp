@@ -144,7 +144,7 @@ void update(long long int step, int* mt_len){
 
 #ifdef OUTPUT_FORCE
     OutputSumForce();
-   OutputForces();
+    OutputForces();
 #endif
 
 #ifdef OUTPUT_EN
@@ -168,7 +168,6 @@ int change_conc(int* delta, int* mt_len){
         float Vol = float(3.14 * par.rep_r * par.rep_r * par.zs[tr]);
         int NFreeDimers = (par.Ntot - mt_len[tr] - num_of_extra) / 2;
 
-       
         while (1.0e7 * NFreeDimers / 6.0 < par.conc * Vol){
             for(int i = 0; i < par.Ntot; i+=2){
                 if (top.extra[i + tr * par.Ntot] && top.mon_type[i] == 0){
@@ -195,10 +194,13 @@ int change_conc(int* delta, int* mt_len){
                     flag++;
                     break;
                 }
-
             }
 
             NFreeDimers += 1;
+            if (num_of_extra == 0) {
+                printf("No more extra particles for trajectory[%d]!\n",tr); 
+                break;   
+            }
         }
             
            // par.zs[tr] += 2.0 * r_mon * delt / 13.0;
@@ -365,6 +367,7 @@ void initParameters(int argc, char* argv[]){
     par.varTheta = sqrtf(2.0f*KB*par.Temp*par.dt/par.gammaTheta);
     par.alpha = getFloatParameter(ALPHA_GEOMETRY);
     par.freeze_temp = getFloatParameter(FREEZE_TEMP);
+
 #ifdef CONCENTRATION
     par.conc = getFloatParameter(CONC);
 #endif 

@@ -517,9 +517,8 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 		    	fi.z += - c_par.rep_eps * fabs(ri.z - (c_par.zs[traj] + c_par.rep_leftborder) );
 		    }
 
-		    //fi.z += - c_par.rep_eps * fabs(ri.z + 100); // traj = 2
-
 		    real rad2 = ri.x * ri.x + ri.y * ri.y;
+
 		    if (rad2 > c_par.rep_r * c_par.rep_r){
 
 		        real coeff = -c_par.rep_eps * (sqrt(rad2) - c_par.rep_r);
@@ -664,7 +663,7 @@ __global__ void pairs_kernel(const Coord* d_r){
 		                zp1 * sin_psij * sin_thetaj),2));
 						
 
-						if (dr < PAIR_CUTOFF - 0.5){
+						if (dr < PAIR_CUTOFF){
 							if (ind == 0){ 
 								c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + c_top.lateralCount[i + traj * c_par.Ntot]] = -j;
 								c_top.lateralCount[i + traj * c_par.Ntot]++;
@@ -674,29 +673,9 @@ __global__ void pairs_kernel(const Coord* d_r){
 							}
 		 	
 						}
-		                /*
-		                if (ind == 0) {
-		                    if (dr < curMinDistArr[0]) {
-		                        curMinDistArr[0] = dr;
-		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = -j;
-		                    }
-		                } else {
-		                    if ((dr < curMinDistArr[1]) && (c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] + j != 0)) {
-		                        curMinDistArr[1] = dr;
-		                        c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
-		                    }
-		                }
-		                */
 
 					}
-					/*
-                    if (curMinDistArr[0] < curMinDistArr[1] && curMinDistArr[0] != PAIR_CUTOFF){
-                    	c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 0] = -j;
-                    } else if (curMinDistArr[1] < curMinDistArr[0] && curMinDistArr[1] != PAIR_CUTOFF){
-                    	c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + i * c_top.maxLateralPerMonomer + 1] = j;
-                    } 
-
-		           */
+					
 		       } 
 
 		    }
@@ -1017,20 +996,13 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 			ri.y += (c_par.dt/c_par.gammaR)*f.y + c_par.varR*rf_xyz.y;
 			ri.z += (c_par.dt/c_par.gammaR)*f.z + c_par.varR*rf_xyz.z;
 
-            
 			ri.fi    += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.fi  + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.x;
 			ri.psi   += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.psi + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.y;
 			ri.theta += (c_par.dt/c_par.gammaTheta)*f.theta + c_par.varTheta*rf_ang.z;
 
-			//ri.fi -= (2 * M_PI) * (int)(ri.fi / (2 * M_PI));
-            //ri.psi -= (2 * M_PI) * (int)(ri.psi / (2 * M_PI));
-            //ri.theta -= (2 * M_PI) * (int)(ri.theta / (2 * M_PI));
-
-            
 			d_r[p] = ri;
 		}
 		
-		/*
 		f.x = 0.0f;
 		f.y = 0.0f;
 		f.z = 0.0f;
@@ -1038,7 +1010,7 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 		f.psi = 0.0f;
 		f.theta = 0.0f;
 		d_f[p] = f;
-		*/
+		
 	}
 }
 
@@ -1155,31 +1127,13 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 		if(step % par.ljpairsupdatefreq == 0){ //pairs update frequency 
 	#ifdef LJ_on
-			//printf("LJPairs are updated");
 			LJ_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
 			checkCUDAError("lj_kernel");
 	#endif
 
 	#if defined(ASSEMBLY)
-
 			pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
             checkCUDAError("pairs_kernel");
-
-            
-/*
-            cudaMemcpy(top.lateral, topGPU.lateral, par.Ntot*par.Ntr*topGPU.maxLateralPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
-            cudaMemcpy(top.lateralCount, topGPU.lateralCount, par.Ntot*sizeof(int), cudaMemcpyDeviceToHost);
-			checkCUDAError("harmonic count copy");
-            for (int i = 0; i < par.Ntot; i ++ ){
-            	//printf("%d:\t", i);
-            	for (int k = 0; k < top.lateralCount[i]; k++){
-            		//printf("%d ", top.longitudinal[top.maxLongitudinalPerMonomer * i + k]);
-            		if (k > 3) printf("=======================================================");
-            	}
-            	//printf("\n");
-            }
-            */
-
 	#endif
 		}
 
@@ -1190,22 +1144,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		checkCUDAError("integrate_kernel");
 
 		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
-		/*		////////////////////*
-			cudaMemcpy(top.longitudinal, topGPU.longitudinal, par.Ntot*par.Ntr*topGPU.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
-            cudaMemcpy(top.longitudinalCount, topGPU.longitudinalCount, par.Ntot*sizeof(int), cudaMemcpyDeviceToHost);
-			checkCUDAError("harmonic count copy");
-            for (int i = 0; i < par.Ntot; i ++ ){
-            	if (top.longitudinalCount[i] > 0 && !top.fixed[i]){
-            		printf("%d:\t", i);
-	            	for (int k = 0; k < top.longitudinalCount[i]; k++){
-	            		printf("%d ", top.longitudinal[top.maxLongitudinalPerMonomer * i + k]);
-	            		if (k == 2) printf("=======================================================");
-	            	}
-	            	printf("\n");
-            	}
-            	
-            }//////
-*/
+		
 	#ifdef OUTPUT_EN
             energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
             checkCUDAError("energy_kernel");
@@ -1223,7 +1162,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 			
 			if (step != 0){
 
-				memcpy(mt_len_prev, mt_len, par.Ntr*sizeof(float));
+				memcpy(mt_len_prev, mt_len, par.Ntr*sizeof(int));
 				mt_length(step, mt_len);
 	#ifdef CONCENTRATION
 				
@@ -1239,8 +1178,8 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 					cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
 					checkCUDAError("copy parameters to const memory");
 
-					cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
-					checkCUDAError("copy of topGPU pointer to const memory");
+					//cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
+					//checkCUDAError("copy of topGPU pointer to const memory");
 				}
 	#endif
 				update(step, mt_len);	

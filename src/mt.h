@@ -34,7 +34,7 @@
 
 #define KB 0.0019872041f //kcal/(mol*K)
 
-#define ANGLE_CUTOFF 0.5f
+#define ANGLE_CUTOFF 1.0f
 
 #define xp1_def (0.5f*R_MT*(cosf(2.0f*M_PI/13.0f) - 1.0f))
 #define yp1_def (0.5f*R_MT*sinf(2.0f*M_PI/13.0f))
@@ -53,7 +53,7 @@
 #define delta_theta	0.001
 
 //assembly_mode
-#define PAIR_CUTOFF 3.0
+#define PAIR_CUTOFF 2.5f
 
 typedef struct {
 	real x;
