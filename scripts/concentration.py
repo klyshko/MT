@@ -43,7 +43,7 @@ else:
 		print "Launch python make_mt_cncntr.py %d extra#\n" % ( 2 * (int(C * V / 13) + 1))
 		
 print """6) Compile with  LJ and REPULSIVE, no MORSE, no ASSEMBLY, no MT_LENGTH, no CONCentration. 
-7) Simulate *.pdb files for 10 million steps and fix = 2, runnum = 1;
+7) Simulate *.pdb files for 10 million steps and fix = 1, runnum = 1;
 8) Take result.pdb as initial structure	
 9) Compile with LJ, CONC, MORSE, ASSEMBLY, MT_LENGTH
-10) Simulate trajectory with any runnum, fix = 2 and so on."""
+10) Simulate trajectory with any runnum, fix = 1 and so on."""

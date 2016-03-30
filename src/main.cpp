@@ -788,6 +788,7 @@ void OutputAllEnergies(long long int step){
             fullEnergy[tr].U_fi += energies[i + par.Ntot * tr].U_fi;
             fullEnergy[tr].U_teta += energies[i + par.Ntot * tr].U_teta;
             fullEnergy[tr].U_lj += energies[i + par.Ntot * tr].U_lj;
+            //printf("ENERGY[%d] long = %f\n", i, energies[i + par.Ntot * tr].U_long);
         }
 
         if (!isfinite(fullEnergy[tr].U_harm) || !isfinite(fullEnergy[tr].U_long) || !isfinite(fullEnergy[tr].U_lat) || !isfinite(fullEnergy[tr].U_lj)) {
@@ -818,7 +819,7 @@ void OutputSumForce(){
             f_sum.z += f[i].z;
         }
         printf("SF for %d traj %.16f\n", tr, sqrt(f_sum.x * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
-        //printf("SF for %d traj: %f %f %f \n", tr, f_sum.x, f_sum.y, f_sum.z);// * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
+       // printf("SF for %d traj: %f %f %f \n", tr, f_sum.x, f_sum.y, f_sum.z);// * f_sum.x + f_sum.y * f_sum.y + f_sum.z * f_sum.z));
     } 
 }
 
@@ -829,6 +830,10 @@ void OutputForces(){
         //if (f[i].theta)
         printf("Force[%d].theta = %f, fi = %f, psi = %f\n", i, f[i].theta, f[i].fi, f[i].psi);
         printf("Angle[%d].theta = %f, fi = %f, psi = %f\n", i, r[i].theta, r[i].fi, r[i].psi);
+        //printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
+        //printf("Coord[%d].x = %f, y = %f, z = %f\n", i, r[i].x, r[i].y, r[i].z);
+        //printf("type[%d]  %d\n", i, top.mon_type[i]);
+
     }
     
 }
