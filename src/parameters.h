@@ -34,7 +34,7 @@
 #define PARAMETER_DCD_FILE_ANG					"dcd_ang"
 #define PARAMETER_FORCEFIELD_FILE				"forcefield"
 #define PARAMETER_CONDITIONS_FILE				"conditions"
-#define PARAMETER_RESTART_XYZ_FILE            "restart_xyz"
+#define PARAMETER_RESTART_XYZ_FILE              "restart_xyz"
 #define PARAMETER_RESTART_ANG_FILE              "restart_ang"
 
 #define PARAMETER_NUMSTEPS						"steps"
@@ -198,18 +198,27 @@
 #define  D_LONG       "D_long"
 #define  D_LAT        "D_lat"
 
-#define  REP_H    "rep_h"
-#define  REP_R    "rep_r"
-#define  REP_EPS  "rep_eps"
-#define  REP_LEFTBORDER  "rep_leftborder"
 
- #define ALPHA_GEOMETRY                         "alpha"
- #define FREEZE_TEMP                            "freeze_temp"
- #define CONC                                   "conc"
+#define  REPULSIVE_WALLS        "repulsive_walls"
+#define  REP_H                  "rep_h"
+#define  REP_R                  "rep_r"
+#define  REP_EPS                "rep_eps"
+#define  REP_LEFTBORDER         "rep_leftborder"
+
+#define TUB_LENGTH               "tubule_length"
+#define PAR_OUTPUT_ENERGY       "output_energy"
+#define PAR_OUTPUT_FORCE        "output_force"
+#define PAR_ASSEMBLY            "is_assembly" 
+
+#define ALPHA_GEOMETRY                         "alpha"
+#define FREEZE_TEMP                            "freeze_temp"
+#define CONC                                   "conc"
+#define CONST_CONC                             "is_const_conc"
 
 #define PARAMETER_GAMMA_R						"gammaR"
 #define PARAMETER_GAMMA_THETA					"gammaTheta"
 
+#define PARAMETER_LJ_ON							"LJ_on"
 #define PARAMETER_LJPAIRSCUTOFF					"LJPairsCutoff"
 #define PARAMETER_LJPAIRSUPDATEFREQ				"LJPairsUpdateFreq"
 #define PARAMETER_LJSIGMA						"LJSigma"
@@ -228,6 +237,11 @@ typedef struct {
 	real varTheta;
 	real gammaTheta;
     real freeze_temp;
+    bool is_assembly;
+    bool is_const_conc;
+    bool out_energy;
+    bool out_force;
+    bool tub_length;
     real conc;          //[muM/L]
     real alpha;
 	real dt;
@@ -245,127 +259,19 @@ typedef struct {
 	real psi_0;	
 	real fi_0;	
 	real theta_0;	
-#ifdef DOUBLEWELL
-	real A_psi;
-	real A_fi;
-	real A_theta;
-#endif
-#ifdef ANGLES
-    real  h_xx_psi;
-    real  g_xx_psi;
-    real  f_xx_psi;
-    real  e_xx_psi;
-    real  d_xx_psi;
-    real  c_xx_psi;
-    real  b_xx_psi;
-    real  a_xx_psi;
-    real  x0_xx_psi;
 
-    real  h_xy_psi;
-    real  g_xy_psi;
-    real  f_xy_psi;
-    real  e_xy_psi;
-    real  d_xy_psi;
-    real  c_xy_psi;
-    real  b_xy_psi;
-    real  a_xy_psi;
-    real  x0_xy_psi;
-
-    real  h_xx_phi;
-    real  g_xx_phi;
-    real  f_xx_phi;
-    real  e_xx_phi;
-    real  d_xx_phi;
-    real  c_xx_phi;
-    real  b_xx_phi;
-    real  a_xx_phi;
-    real  x0_xx_phi;
-
-    real  h_xx_theta;
-    real  g_xx_theta;
-    real  f_xx_theta;
-    real  e_xx_theta;
-    real  d_xx_theta;
-    real  c_xx_theta;
-    real  b_xx_theta;
-    real  a_xx_theta;
-    real  x0_xx_theta;
-
-    real  h_xy_phi;
-    real  g_xy_phi;
-    real  f_xy_phi;
-    real  e_xy_phi;
-    real  d_xy_phi;
-    real  c_xy_phi;
-    real  b_xy_phi;
-    real  a_xy_phi;
-    real  x0_xy_phi;
-
-    real  h_xy_theta;
-    real  g_xy_theta;
-    real  f_xy_theta;
-    real  e_xy_theta;
-    real  d_xy_theta;
-    real  c_xy_theta;
-    real  b_xy_theta;
-    real  a_xy_theta;
-    real  x0_xy_theta;
-#endif
-#if defined(SIGMOID) or defined(DEXP)
-	real A_xx;	
-	real b_xx;	
-	real c_xx;	
-	real d_xx;
-#endif
-#if defined(SIGMOID)
-    real A_xy;
-    real b_xy;
-    real c_xy;
-    real d_xy;
-    real A_lat[4];
-    real b_lat[4];
-    real c_lat[4];
-    real d_lat[4];
-#elif defined(DEXP)
-    real a_dexp_lat;
-    real a_dexp_long;
-    real b_dexp_lat;
-    real b_dexp_long;
-    real r_dexp_lat;
-    real r_dexp_long;
-    real s1_dexp_lat;
-    real s2_dexp_lat;
-    real s1_dexp_long;
-    real s2_dexp_long;
-#elif defined(EXP)
-    real g0_long;
-    real g0_lat;
-    real k_long;
-    real k_lat;
-#elif defined(MORSE)
     real A_lat;
     real A_long;
     real D_lat;
     real D_long;
-#else
-	real A_long;	
-	real b_long;
-	real c_long;	
-	real r0_long;	
-	real d_long;	
-	real A_lat;	
-	real b_lat;	
-	real c_lat;	
-	real r0_lat;	
-	real d_lat;
-#endif
-#if defined(REPULSIVE)
+
+    bool is_wall;
     real rep_h;
     real rep_r;
     real rep_eps;
-    float zs[32];
+    float zs[PARAMETER_LENGTH];
     real rep_leftborder;
-#endif
+
 #if defined(BARR)
     real a_barr_long;
     real r_barr_long;
@@ -375,7 +281,8 @@ typedef struct {
     real w_barr_lat;
 #endif
 	real ljpairscutoff;
-	int ljpairsupdatefreq;	
+	int ljpairsupdatefreq;
+	bool lj_on;	
 	real ljscale;	
 	real ljsigma6;	
 	char coordFilename_xyz[PARAMETER_LENGTH], coordFilename_ang[PARAMETER_LENGTH];

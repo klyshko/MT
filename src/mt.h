@@ -17,6 +17,7 @@
 #include "pdbio.h"
 #include "dcdio.h"
 #include "xyzio.h"
+#include "Cuda.h"
 
 #define R_MT 8.12f //nm  microtube radius
 #define r_mon 2.0f //nm	 monomer radius
@@ -28,6 +29,9 @@
 #define R_THRES (r_mon * 1.5)
 
 #define Turn 13 //Monomers per turn(2PI) 
+
+#define BLOCK_SIZE 32
+#define ZERO 	999999
 
 #define real float
 #define real4 float4
@@ -62,6 +66,7 @@ typedef struct {
 	real fi;
 	real theta;
 	real psi;
+	real w;
 } Coord;
 
 typedef struct{
@@ -91,5 +96,40 @@ typedef struct{
         double U_teta;
         double U_lj;
 } Energies;
+
+struct Tea {
+	float4 *rforce; // Precomputed random forces
+	float4 *mforce; // Copy of molecular forces for each bead
+	float4 *coords; // Copy of coordinates for each bead
+	float *d_beta_ij; // $\beta_{ij}$ from eq. (14) in Geyer&Winter, 2009;
+	float *h_beta_ij;
+	float *d_epsilon; // Array of epsilon values for individual beads, evaluated on device and used to fill d_beta_ij
+	float *h_epsilon;
+	float4 *d_ci; // Does not actually store $C_i$, only $\sum (Dij/Dii)^2$
+    float *d_tensor; // Memory for tensor when running in `exact` mode
+	int epsilon_freq; // How often to update epsilon, beta_ij and c_i
+	int Ntot; // Number of aminos per trajectory, nothing special
+	float a; // Bead hydrodynamic radius, in A
+	int capricious; // If != 0, then the simulation will stop if HI tensor has abnormal values. If zero, the simulation will continue anyway (and it is probably perfectly fine).
+	int unlisted; // If ==0, then beads will interact hydrodynamically with their friends in covalent, native and pairs lists
+    int exact; // If > 0, use Cholesky-based treatment
+	float epsmax; // If epsilon exceeds this value, then abort simulation. Default: never [in capricious mode, epsilon > 1.0 will trigger stop anyway]
+};
+
+struct float6 {
+	float3 xx; // xx, xy, xz
+	float3 yz; // yy, yz, zz
+};
+
+#define _XX xx.x
+#define _XY xx.y
+#define _XZ xx.z
+#define _YX xx.y
+#define _YY yz.x
+#define _YZ yz.y
+#define _ZX xx.z
+#define _ZY yz.y
+#define _ZZ yz.z
+
 
 #endif /* MT_H_ */

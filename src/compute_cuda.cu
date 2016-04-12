@@ -7,23 +7,7 @@
    Modified on: 09.01.2015
    		Author: klyshko
  */
-
-#include <cuda.h>
-#include "Cuda.h"
-#include "mt.h"
-#include "parameters.h"
-#include "HybridTaus.cu"
-
-#define BLOCK_SIZE 32
-#define ZERO 	999999
-
-extern void update(long long int step, int* mt_len);
-extern int change_conc(int* delta, int* mt_len);
-extern void mt_length(long long int step, int* mt_len);
-
-__device__ __constant__ Parameters c_par;
-__device__ __constant__ Topology c_top;
-
+#include "compute_cuda.cuh"
 
 __device__ real dmorse(real D, real a, real x){
     return (2*a*D*(1-exp(-a*x))*exp(-a*x));
@@ -40,7 +24,6 @@ __device__ real dbarr(real a, real r, real w, real x){
 __device__ real barr(real a, real r, real w, real x){
     return a*exp(-(x-r)*(x-r)/(2*w*w));
 }
-
 
 __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	const int p = blockIdx.x*blockDim.x + threadIdx.x;
@@ -468,56 +451,53 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 #endif
 
 
-#ifdef LJ_on
+			if (c_par.lj_on) {
 
-						
-			for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
+				for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
 
-				j = c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * traj + ind * c_top.maxLJPerMonomer + k];
-				rj = d_r[j + traj * c_par.Ntot];
-				dr = sqrt(pow(ri.x-rj.x,2)+pow(ri.y-rj.y,2)+pow(ri.z-rj.z,2));
-				
-				if( dr < lj_cutoff )
-	            {	
-	            	real df = 6/pow(dr,8);
+					j = c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * traj + ind * c_top.maxLJPerMonomer + k];
+					rj = d_r[j + traj * c_par.Ntot];
+					dr = sqrt(pow(ri.x-rj.x,2)+pow(ri.y-rj.y,2)+pow(ri.z-rj.z,2));
+					
+					if( dr < lj_cutoff )
+		            {	
+		            	real df = 6/pow(dr,8);
 
-	            #ifdef REGULARIZATION
-	            	if (c_par.ljscale * c_par.ljsigma6 * df * dr > c_par.gammaR * r_mon / c_par.dt ){
-	            		df = c_par.gammaR * r_mon / (c_par.dt * dr * c_par.ljscale * c_par.ljsigma6);	
-	            	} 
-				#endif	
-	            	
-	            	fi.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
-					fi.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
-					fi.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z); 
+		            #ifdef REGULARIZATION
+		            	if (c_par.ljscale * c_par.ljsigma6 * df * dr > c_par.gammaR * r_mon / c_par.dt ){
+		            		df = c_par.gammaR * r_mon / (c_par.dt * dr * c_par.ljscale * c_par.ljsigma6);	
+		            	} 
+					#endif	
+		            	
+		            	fi.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
+						fi.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
+						fi.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z); 
 
+					}
 				}
+
 			}
 
+			if (c_par.is_wall) {
 
-#endif
+				if (ri.z < c_par.rep_leftborder){ 
 
-#if defined(REPULSIVE)
-
-			
-		    if (ri.z < c_par.rep_leftborder){ 
-
-		        fi.z += c_par.rep_eps * fabs(ri.z - c_par.rep_leftborder);
-		    } else if (ri.z > c_par.zs[traj] + c_par.rep_leftborder) {
+		        	fi.z += c_par.rep_eps * fabs(ri.z - c_par.rep_leftborder);
+		    	} else if (ri.z > c_par.zs[traj] + c_par.rep_leftborder) {
 
 		    	fi.z += - c_par.rep_eps * fabs(ri.z - (c_par.zs[traj] + c_par.rep_leftborder) );
-		    }
+		   		}
 
-		    real rad2 = ri.x * ri.x + ri.y * ri.y;
+			    real rad2 = ri.x * ri.x + ri.y * ri.y;
 
-		    if (rad2 > c_par.rep_r * c_par.rep_r){
+			    if (rad2 > c_par.rep_r * c_par.rep_r){
 
-		        real coeff = -c_par.rep_eps * (sqrt(rad2) - c_par.rep_r);
-		        fi.x += ri.x * coeff ;
-		        fi.y += ri.y * coeff;
-		    }
+			        real coeff = -c_par.rep_eps * (sqrt(rad2) - c_par.rep_r);
+			        fi.x += ri.x * coeff ;
+			        fi.y += ri.y * coeff;
+			    }
+			} 	
 		    
-#endif
 
 			d_f[p] = fi;
 			fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
@@ -916,17 +896,17 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 			}
 #endif
 		
-#ifdef LJ_on
 
-	        for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
-	        	j = c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * traj + ind * c_top.maxLJPerMonomer + k];
-				rj = d_r[j + traj * c_par.Ntot];
-	            dr = sqrt(pow(ri.x - rj.x, 2) + pow(ri.y - rj.y, 2) + pow(ri.z - rj.z, 2));
-	            if(dr < lj_cutoff){
-	                U_lj += c_par.ljscale * c_par.ljsigma6 / pow(dr,6);
-	            }
-	        }
-#endif       
+			if (c_par.lj_on){
+				for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
+		        	j = c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * traj + ind * c_top.maxLJPerMonomer + k];
+					rj = d_r[j + traj * c_par.Ntot];
+		            dr = sqrt(pow(ri.x - rj.x, 2) + pow(ri.y - rj.y, 2) + pow(ri.z - rj.z, 2));
+		            if(dr < lj_cutoff){
+		                U_lj += c_par.ljscale * c_par.ljsigma6 / pow(dr,6);
+		            }
+		        }
+			}       
 
 		}
 
@@ -1006,12 +986,7 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 	}
 }
 
-void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
-
-	Coord* d_r;
-	Coord* d_f;
-	Topology topGPU;
-	
+void initIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
 	cudaSetDevice(par.device);
 	checkCUDAError("device");
 
@@ -1087,13 +1062,14 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	cudaMemcpy(topGPU.extra, top.extra, par.Ntr * par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
 	checkCUDAError("extra copy");
 
-#ifdef LJ_on
-	topGPU.maxLJPerMonomer = 256;  ///I hope it will be enough       =top.maxLJPerMonomer;
-	cudaMalloc((void**)&(topGPU.LJCount), par.Ntot*sizeof(int)*par.Ntr);
-	checkCUDAError("lj_count allocation");
-	cudaMalloc((void**)&(topGPU.LJ), par.Ntot*sizeof(int)*par.Ntr*topGPU.maxLJPerMonomer);
-	checkCUDAError("lj allocation");	
-#endif
+	if (par.lj_on){
+		topGPU.maxLJPerMonomer = 256;  ///I hope it will be enough       =top.maxLJPerMonomer;
+		cudaMalloc((void**)&(topGPU.LJCount), par.Ntot*sizeof(int)*par.Ntr);
+		checkCUDAError("lj_count allocation");
+		cudaMalloc((void**)&(topGPU.LJ), par.Ntot*sizeof(int)*par.Ntr*topGPU.maxLJPerMonomer);
+		checkCUDAError("lj allocation");	
+	}
+	
 
 	//const memory
 	cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
@@ -1102,108 +1078,17 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
 	checkCUDAError("copy parameters to const memory");
 
-#ifdef OUTPUT_EN     //energies initializing
-	Energies* d_energies;
-	cudaMalloc((void**)&d_energies, par.Ntot*par.Ntr * sizeof(Energies));
-	checkCUDAError("d_energies allocation");
-#endif
+    //energies initializing
+    if (par.out_energy) {	
+		cudaMalloc((void**)&d_energies, par.Ntot*par.Ntr * sizeof(Energies));
+		checkCUDAError("d_energies allocation");
+    }
+
 
 	initRand(par.rseed, 2*par.Ntot*par.Ntr);
+}
 
-    int* mt_len = (int*)malloc(par.Ntr * sizeof(int));
-	int* mt_len_prev = (int*)malloc(par.Ntr * sizeof(int));
-	//int* delta = (int*)malloc(par.Ntr * sizeof(int))
-
-	for(long long int step = 0; step < par.steps; step++){
-
-
-		if(step % par.ljpairsupdatefreq == 0){ //pairs update frequency 
-	#ifdef LJ_on
-			LJ_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
-			checkCUDAError("lj_kernel");
-	#endif
-
-	#if defined(ASSEMBLY)
-			pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
-            checkCUDAError("pairs_kernel");
-	#endif
-		}
-
-		
-		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
-		
-	#ifdef OUTPUT_EN
-            energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
-            checkCUDAError("energy_kernel");
-            cudaMemcpy(energies, d_energies, par.Ntr * par.Ntot * sizeof(Energies), cudaMemcpyDeviceToHost);
-            checkCUDAError("energy_copy");
-	#endif
-			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
-			checkCUDAError("r copy");
-
-	#if defined (OUTPUT_FORCE)
-			cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
-	#endif
-
-#ifdef MT_LENGTH
-			
-			if (step != 0){
-
-				memcpy(mt_len_prev, mt_len, par.Ntr*sizeof(int));
-				mt_length(step, mt_len);
-	#ifdef CONCENTRATION
-				
-				for (int i = 0; i < par.Ntr; i++){
-					mt_len_prev[i] = mt_len[i] - mt_len_prev[i];
-				}
-
-				if (change_conc(mt_len_prev, mt_len)){
-					cudaMemcpy(topGPU.extra, top.extra, par.Ntr * par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
-					checkCUDAError("extra copy to device");
-					cudaMemcpy(d_r, r, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
-					checkCUDAError("from r to d_r copy");
-					cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
-					checkCUDAError("copy parameters to const memory");
-
-					//cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
-					//checkCUDAError("copy of topGPU pointer to const memory");
-				}
-	#endif
-				update(step, mt_len);	
-				
-			} 
-			else{
-				update(step, mt_len);
-				mt_length(step, mt_len);
-			}
-
-#endif
-		
-#ifndef MT_LENGTH			
-			update(step, mt_len);
-#endif			
-		}
-
-		integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
-		checkCUDAError("integrate_kernel");
-		
-		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
-		checkCUDAError("compute_kernel");
-
-		/*
-		cudaMemcpy(top.longitudinal, topGPU.longitudinal, par.Ntot*par.Ntr*top.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
-		printf("Done\n");
-		cudaMemcpy(top.longitudinalCount, topGPU.longitudinalCount, par.Ntot*par.Ntr*sizeof(int), cudaMemcpyDeviceToHost);
-		
-
-		for (int i = 0; i < par.Ntot; i++){
-			//c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + c_top.maxLateralPerMonomer * ind + k];
-			if (top.longitudinalCount[i] > 0)
-			printf("[%d] %d\n", i, top.longitudinal[ top.maxLongitudinalPerMonomer * i + 0]);
-		}
-*/
-	}
-
+void deleteIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
 	cudaFree(d_r);
 	cudaFree(d_f);
 
@@ -1216,12 +1101,132 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	cudaFree(topGPU.harmonic);
 	cudaFree(topGPU.longitudinal);
 	cudaFree(topGPU.lateral);
-#ifdef LJ_on
-	cudaFree(topGPU.LJCount);
-	cudaFree(topGPU.LJ);
-#endif
-#ifdef OUTPUT_EN
-	cudaFree(d_energies);
-#endif
+	if (par.lj_on){
+		cudaFree(topGPU.LJCount);
+		cudaFree(topGPU.LJ);
+	} 
+	if (par.out_energy)
+		cudaFree(d_energies);
+
 	checkCUDAError("cleanup");
 }
+
+void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
+
+	initIntegration(r, f, par, top, energies);
+
+	if (true) {
+		initTeaIntegrator();																	
+		//Hydrodynamics integrator;
+	} 
+
+    int* mt_len = (int*)malloc(par.Ntr * sizeof(int));
+	int* mt_len_prev = (int*)malloc(par.Ntr * sizeof(int));
+	//int* delta = (int*)malloc(par.Ntr * sizeof(int))
+
+	for(long long int step = 0; step < par.steps; step++){				// <-- Start simulations
+
+
+		if(step % par.ljpairsupdatefreq == 0){ //pairs update frequency 
+
+			if (par.lj_on){
+				LJ_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
+				checkCUDAError("lj_kernel");
+			}
+
+			if (par.is_assembly){
+				pairs_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
+            	checkCUDAError("pairs_kernel");
+			}
+		}
+
+		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
+		
+			if (par.out_energy) {
+	            energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
+	            checkCUDAError("energy_kernel");
+	            cudaMemcpy(energies, d_energies, par.Ntr * par.Ntot * sizeof(Energies), cudaMemcpyDeviceToHost);
+	            checkCUDAError("energy_copy");
+	        }
+
+			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
+			checkCUDAError("r copy");
+
+			if (par.out_force) {
+				cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
+				checkCUDAError("forces copy");
+			}
+
+
+
+			if (par.tub_length) {
+				if (step != 0){
+
+					memcpy(mt_len_prev, mt_len, par.Ntr*sizeof(int));
+					mt_length(step, mt_len);
+		
+					if (par.is_const_conc){
+						for (int i = 0; i < par.Ntr; i++){
+							mt_len_prev[i] = mt_len[i] - mt_len_prev[i];
+						}
+
+						if (change_conc(mt_len_prev, mt_len)){
+							cudaMemcpy(topGPU.extra, top.extra, par.Ntr * par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
+							checkCUDAError("extra copy to device");
+							cudaMemcpy(d_r, r, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
+							checkCUDAError("from r to d_r copy");
+							cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
+							checkCUDAError("copy parameters to const memory");
+
+							//cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
+							//checkCUDAError("copy of topGPU pointer to const memory");
+						}
+					}
+		
+					update(step, mt_len);	
+					
+					} 
+					else{
+						update(step, mt_len);
+						mt_length(step, mt_len);
+					}
+				} else {
+					update(step, mt_len);
+				}			
+			
+		}
+
+		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
+		checkCUDAError("compute_kernel");
+
+		if (true) {
+				updateTea(step);
+																		///// loop for HDI
+			//Hydrodynamics integrator;
+		} else {
+			integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
+			checkCUDAError("integrate_kernel");
+		}
+		
+
+		/*
+		cudaMemcpy(top.longitudinal, topGPU.longitudinal, par.Ntot*par.Ntr*top.maxLongitudinalPerMonomer*sizeof(int), cudaMemcpyDeviceToHost);
+		printf("Done\n");
+		cudaMemcpy(top.longitudinalCount, topGPU.longitudinalCount, par.Ntot*par.Ntr*sizeof(int), cudaMemcpyDeviceToHost);
+		
+
+		for (int i = 0; i < par.Ntot; i++){
+			//c_top.lateral[c_top.maxLateralPerMonomer * c_par.Ntot * traj + c_top.maxLateralPerMonomer * ind + k];
+			if (top.longitudinalCount[i] > 0)
+			printf("[%d] %d\n", i, top.longitudinal[ top.maxLongitudinalPerMonomer * i + 0]);
+		}
+		*/
+	}
+
+	if (true) {
+		deleteTeaIntegrator();																	
+		//Hydrodynamics integrator;
+	} 
+	deleteIntegration(r, f, par, top, energies);
+}
+
