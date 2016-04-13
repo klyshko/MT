@@ -15,22 +15,23 @@ void initTeaIntegrator(){
 	//initLangevinIntegrator();
 	//teaIntegrator.h = par.dt;
 	tea.Ntot = par.Ntot;
-	tea.a = getFloatParameter(BDHITEA_A_STRING, r_mon, 1); // in Angstroms
-  	tea.capricious = getYesNoParameter(BDHITEA_CAPRICIOUS_STRING, 1, 1); // Be paranoid about tensor values?
-    tea.epsilon_freq = 1;//getIntegerParameter(BDHITEA_EPSILONFREQ_STRING, 0, 0); // How often recalculate epsilon?
+	tea.a = getFloatParameter(BDHITEA_A_STRING, r_mon + 1, 1); // in Angstroms
+	tea.capricious = getYesNoParameter(BDHITEA_CAPRICIOUS_STRING, 1, 1); // Be paranoid about tensor values?
+    tea.epsilon_freq = 20;//getIntegerParameter(BDHITEA_EPSILONFREQ_STRING, 0, 0); // How often recalculate epsilon?
 	tea.epsmax = getFloatParameter(BDHITEA_EPSMAX_STRING, 999.f, 1); // Epsilon will never exceed 1, so epsmax=999 will never trigger halt by itself; used in capricious mode
 	tea.unlisted = 1;
 	 
-	cudaMalloc(&tea.rforce, par.Ntot * sizeof(float4));
-	cudaMalloc(&tea.mforce, par.Ntot * sizeof(float4));
-	cudaMalloc(&tea.coords, par.Ntot * sizeof(float4));
-    cudaMalloc(&tea.d_epsilon, par.Ntot * sizeof(float));
-	cudaMalloc(&tea.d_ci, par.Ntot * sizeof(float4));
-	cudaMalloc(&tea.d_beta_ij, par.Ntr * sizeof(float));
-    tea.h_epsilon = (float*) malloc(par.Ntot * sizeof(float));
-	tea.h_beta_ij = (float*) malloc(par.Ntr * sizeof(float));
+	cudaMalloc(&tea.rforce, par.Ntr * par.Ntot * sizeof(float4));
+	cudaMalloc(&tea.mforce, par.Ntr * par.Ntot * sizeof(float4));
+	cudaMalloc(&tea.coords, par.Ntr * par.Ntot * sizeof(float4));
 
-	checkCUDAError("tea memoru allocation");
+	cudaMalloc(&tea.d_epsilon, par.Ntot * par.Ntr * sizeof(float));
+	cudaMalloc(&tea.d_ci, par.Ntot * par.Ntr * sizeof(float4));
+	cudaMalloc(&tea.d_beta_ij, par.Ntr * par.Ntr * sizeof(float));
+    tea.h_epsilon = (float*) malloc(par.Ntot * par.Ntr * sizeof(float));
+	tea.h_beta_ij = (float*) malloc(par.Ntr * par.Ntr * sizeof(float));
+
+	checkCUDAError("tea memory allocation");
 	cudaMemcpyToSymbol(c_tea, &tea, sizeof(Tea), 0, cudaMemcpyHostToDevice);
 	checkCUDAError("tea constant copy");
 
@@ -40,9 +41,9 @@ void initTeaIntegrator(){
 
 void integrateTea(){
 	// Pregenerate random forces
-	//integrateTea_prepare<<<gsop.aminoCount/BLOCK_SIZE + 1, BLOCK_SIZE>>>();
-	//integrateTea_kernel_unlisted<<<gsop.aminoCount/BLOCK_SIZE + 1, BLOCK_SIZE>>>();
-	//checkCUDAError();
+	integrateTea_prepare<<<par.Ntot/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_f, d_r);
+	integrateTea_kernel_unlisted<<<par.Ntot/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_f, d_r);
+	checkCUDAError("integrate TEA prepare and kernel");
 }
 
 void deleteTeaIntegrator(){
@@ -63,11 +64,12 @@ void updateTea(long long int step){
 	const int N = par.Ntot;
 	if (update_epsilon){
 		// Calculate relative coupling
-		integrateTea_epsilon_unlisted<<<par.Ntot/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
+		integrateTea_epsilon_unlisted<<<par.Ntr * par.Ntot/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
 		// Dowload epsilon`s
-		cudaMemcpy(tea.h_epsilon, tea.d_epsilon, par.Ntot * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(tea.h_epsilon, tea.d_epsilon, par.Ntr * par.Ntot * sizeof(float), cudaMemcpyDeviceToHost);
 		checkCUDAError("copy epsilon from device");
-//		printf("epsilon: [ ");
+
+		printf("epsilon: [ ");
 		for (int t = 0; t < par.Ntr; ++t){
 			double epsilon = 0.0;
 			for (int i = 0; i < N; ++i){
@@ -96,9 +98,9 @@ void updateTea(long long int step){
 				tea.h_beta_ij[t] = (1. - sqrt(1. - a)) / a; // eq. (26)
 			}
 			tea.h_epsilon[t] = epsilon; // We slowly overwrite the beginning of h_epsilon with per-trajectory epsilons to later output them
-//			printf("%lf ", epsilon);
+			printf("%lf ", epsilon);
 		}
-//		printf("]\n");
+		printf("]\n");
 		cudaMemcpy(tea.d_beta_ij, tea.h_beta_ij, par.Ntr * sizeof(float), cudaMemcpyHostToDevice);
 		checkCUDAError("copy betaij to device");
 	}

@@ -2,7 +2,7 @@
 
 #include "mt.h"
 #include "parameters.h"
-#include "Cuda.h" 
+#include "Cuda.h"
 
 using namespace std;
 

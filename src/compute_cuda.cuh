@@ -1,4 +1,5 @@
 #include <cuda.h>
+#include "wrapper.h"
 #include "Cuda.h"
 #include "mt.h"
 #include "globals.h"

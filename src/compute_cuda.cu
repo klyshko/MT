@@ -9,6 +9,10 @@
  */
 #include "compute_cuda.cuh"
 
+__device__ __constant__ Parameters c_par;
+__device__ __constant__ Topology c_top;
+__device__ __constant__ Tea c_tea;
+
 __device__ real dmorse(real D, real a, real x){
     return (2*a*D*(1-exp(-a*x))*exp(-a*x));
 }
@@ -987,8 +991,16 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 }
 
 void initIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies){
+	//printf("device is %d\n", par.device);
 	cudaSetDevice(par.device);
-	checkCUDAError("device");
+	cudaGetDevice(&(par.device));
+	cudaDeviceProp deviceProp; 
+
+	cudaGetDeviceProperties(&deviceProp, par.device);
+
+	printf("Using device %d: %s \n", par.device, deviceProp.name);
+
+	checkCUDAError("device: mistake");
 
 	cudaMalloc((void**)&d_r, par.Ntot*par.Ntr*sizeof(Coord));
 	checkCUDAError("d_r allocation");
@@ -1012,7 +1024,6 @@ void initIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energie
         r[i].theta -= (2 * M_PI) * (int)(r[i].theta / (2 * M_PI));
         
 	}
-
 
 	cudaMemcpy(d_f, f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
 	checkCUDAError("copy_forces");
@@ -1198,10 +1209,11 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
 		checkCUDAError("compute_kernel");
-
+		
 		if (true) {
 				updateTea(step);
-																		///// loop for HDI
+				integrateTea();
+																///// loop for HDI
 			//Hydrodynamics integrator;
 		} else {
 			integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);

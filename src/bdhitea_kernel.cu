@@ -28,7 +28,7 @@ __global__ void integrateTea_prepare(Coord* d_f, Coord* d_r){
 	const int d_i = blockIdx.x*blockDim.x + threadIdx.x;
 	if(d_i < c_par.Ntot){
 		// Random force
-		const float var = 0;//c_langevin.var;                 /////// sqrt(2 kb T gamma/dt)
+		const float var = sqrtf(2.0f * KB * c_par.Temp * c_par.gammaR / c_par.dt);//c_langevin.var;                 /////// sqrt(2 kb T gamma/dt)
 		float4 df = rforce(d_i);
 		df.x *= var;
 		df.y *= var;
@@ -80,11 +80,13 @@ __device__ inline float4 integrateTea_epsilon_local(const float4& coord1, const 
 	dr.x /= dr.w;
 	dr.y /= dr.w;
 	dr.z /= dr.w;
+	//printf("%d kkk %f %f %f  %f\n",idx2 , dr.x, dr.y, dr.z, dr.w);
 	float6 d = integrateTea_RPY(dr);
 	dr.w = d._XX + 2*d._XY + 2*d._XZ + d._YY + 2*d._YZ + d._ZZ; // Sum of all 3*3 tensor components
 	dr.x = d._XX*d._XX + d._XY*d._XY + d._XZ*d._XZ;
 	dr.y = d._YX*d._YX + d._YY*d._YY + d._YZ*d._YZ;
 	dr.z = d._ZX*d._ZX + d._ZY*d._ZY + d._ZZ*d._ZZ;
+
 	return dr;
 }
 
@@ -92,16 +94,18 @@ __device__ inline float4 integrateTea_epsilon_local(const float4& coord1, const 
 __global__ void integrateTea_epsilon_unlisted(Coord* d_r){
 	// Like integrateTea_epsilon, but calculate all-vs-all
 	const int d_i = blockIdx.x * blockDim.x + threadIdx.x;
-	if(d_i < c_par.Ntot){
+	if(d_i < c_par.Ntot * c_par.Ntr){
 		const int i0 = ((int)(d_i / c_tea.Ntot))*c_tea.Ntot;
 		int i;
+		
 		float4 coord = make_float4(d_r[d_i].x, d_r[d_i].y, d_r[d_i].z, 0.f);
 		float4 sum = make_float4(0.f, 0.f, 0.f, 0.f);
 		for(i = i0; i < i0 + c_tea.Ntot; i++){
-			if (i != d_i){}
+			if (i != d_i ){
 				sum += integrateTea_epsilon_local(coord, i, d_r);
+			}
 		}
-		c_tea.d_ci[d_i] = sum;//make_float3(sum.x, sum.y, sum.z);
+		c_tea.d_ci[d_i] = make_float4(sum.x, sum.y, sum.z, 0.f);
 		c_tea.d_epsilon[d_i] = sum.w; // Should later be divided by number of non-diagonal degrees-of-freedom in single trajectory
 	}
 }
@@ -151,7 +155,7 @@ __device__ inline float4 integrateTea_force(const float4& coord1, const int idx2
 						D._ZX*f.x + D._ZY*f.y + D._ZZ*f.z, 0.f);
 }
 
-__global__ void integrateTea_kernel_unlisted(Coord* d_r){
+__global__ void integrateTea_kernel_unlisted(Coord* d_f, Coord* d_r){
 	// Pairist-free version of  integrateTea_kernel
 	const int d_i = blockIdx.x*blockDim.x + threadIdx.x;
 	if(d_i < c_par.Ntot){
@@ -187,14 +191,27 @@ __global__ void integrateTea_kernel_unlisted(Coord* d_r){
 		
 		// Integration step
 		// We've replaced all forces with their `effective` counterparts, so this part of integration process stays the same as in simple langevin integrator
-		const float mult = 0.f;//c_langevin.hOverZeta;
+		const float mult = c_par.dt / c_par.gammaR ; ///c_langevin.hOverZeta;
 		const float3 dr = make_float3(mult*f.x, mult*f.y, mult*f.z);
 		coord.x += dr.x;
 		coord.y += dr.y;
 		coord.z += dr.z;
-		d_r[d_i].x = coord.x;
-		d_r[d_i].y = coord.y;
-		d_r[d_i].z = coord.z;
+
+		Coord ri = d_r[d_i];
+		Coord fi = d_f[d_i];
+
+		float4 rf_ang = make_float4(0,0,0,0);
+		rf_ang = rforce(d_i + c_par.Ntot*c_par.Ntr);
+
+		ri.x = coord.x;
+		ri.y = coord.y;
+		ri.z = coord.z;
+
+		ri.fi    += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*fi.fi  + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.x;
+		ri.psi   += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*fi.psi + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.y;
+		ri.theta += (c_par.dt/c_par.gammaTheta)*fi.theta + c_par.varTheta*rf_ang.z;
+
+		d_r[d_i] = ri;
 
 		// Update energies
 		/*coord = c_gsop.d_energies[d_i];

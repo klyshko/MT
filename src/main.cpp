@@ -73,7 +73,7 @@ int main(int argc, char *argv[]){
     if (par.out_energy){
         energies = (Energies*)malloc(par.Ntot * par.Ntr * sizeof(Energies));
     }
-    
+
     compute(r, f, par, top, energies);                  // <---------- /// ---------------     COMPUTING of DYNAMICS
 
     saveCoordPDB("result_xyz.pdb", "result_ang.pdb");

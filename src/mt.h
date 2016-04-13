@@ -18,6 +18,7 @@
 #include "dcdio.h"
 #include "xyzio.h"
 #include "Cuda.h"
+ #include <cuda.h>
 
 #define R_MT 8.12f //nm  microtube radius
 #define r_mon 2.0f //nm	 monomer radius
