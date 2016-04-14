@@ -226,10 +226,19 @@
 
 #define PARAMETER_FIX							"fix"
 #define PARAMETER_ISRESTART                     "is_restart"
-#define PARAMETER_RESTARTKEY                    "restartkey" 	
+#define PARAMETER_RESTARTKEY                    "restartkey" 
+
+#define BDHITEA_ON_STRING "tea_on" // enable/disable TEA
+#define BDHITEA_EXACT_STRING "tea_exact" // use Cholesky-based HI treatment; it's not TEA anymore
+#define BDHITEA_A_STRING "tea_a" // set hydrodynamic radii of single bead, Angstroms
+#define BDHITEA_EPSILONFREQ_STRING "tea_epsilon_freq" // frequncy of updating ersatz coefficients, steps
+#define BDHITEA_CAPRICIOUS_STRING "tea_capricious" // whether to abort execution on weird values of HI tensor
+#define BDHITEA_UNLISTED_STRING "tea_unlisted" // whether to calculate all-to-all interactions, or just the ones in pairlist
+#define BDHITEA_EPSMAX_STRING "tea_epsmax" // Abort simulation if epsilon reaches this value, unitless	
 
 
 typedef struct {
+	bool hdi_on;
 	int rseed;
 	real Temp;
 	real varR;

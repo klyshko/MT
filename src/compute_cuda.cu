@@ -1126,7 +1126,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 	initIntegration(r, f, par, top, energies);
 
-	if (true) {
+	if (par.hdi_on) {
 		initTeaIntegrator();																	
 		//Hydrodynamics integrator;
 	} 
@@ -1210,7 +1210,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
 		checkCUDAError("compute_kernel");
 		
-		if (true) {
+		if (par.hdi_on) {
 				updateTea(step);
 				integrateTea();
 																///// loop for HDI
@@ -1235,7 +1235,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		*/
 	}
 
-	if (true) {
+	if (par.hdi_on) {
 		deleteTeaIntegrator();																	
 		//Hydrodynamics integrator;
 	} 

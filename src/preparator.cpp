@@ -52,6 +52,20 @@ void initParameters(int argc, char* argv[]){
     	par.out_force = false;
     }
 
+    if(getYesNoParameter(BDHITEA_ON_STRING,0))
+        par.hdi_on = true;
+    else
+        par.hdi_on = false;
+
+    if (par.hdi_on) {
+        tea.a = getFloatParameter(BDHITEA_A_STRING, r_mon, 1); // in Angstroms
+        tea.capricious = getYesNoParameter(BDHITEA_CAPRICIOUS_STRING, 1, 1); // Be paranoid about tensor values?
+        tea.epsilon_freq = getIntegerParameter(BDHITEA_EPSILONFREQ_STRING, 0, 0); // How often recalculate epsilon?
+        tea.epsmax = getFloatParameter(BDHITEA_EPSMAX_STRING, 999.f, 1); // Epsilon will never exceed 1, so epsmax=999 will never trigger halt by itself; used in capricious mode
+        tea.unlisted = 1; 
+    } 
+    
+
   
     getMaskedParameter(par.restartkey, PARAMETER_RESTARTKEY);
 
@@ -183,7 +197,8 @@ void initParameters(int argc, char* argv[]){
     if(extra_counter == 0 && par.is_const_conc) {
     	printf("Error! You want constant concentration! Load structure with extra particles (chain X) to support constant concentration!\n");
     	exit(-1);
-    }      
+    } 
+    
 }
 
 

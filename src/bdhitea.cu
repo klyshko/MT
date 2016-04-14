@@ -15,11 +15,6 @@ void initTeaIntegrator(){
 	//initLangevinIntegrator();
 	//teaIntegrator.h = par.dt;
 	tea.Ntot = par.Ntot;
-	tea.a = getFloatParameter(BDHITEA_A_STRING, r_mon + 1, 1); // in Angstroms
-	tea.capricious = getYesNoParameter(BDHITEA_CAPRICIOUS_STRING, 1, 1); // Be paranoid about tensor values?
-    tea.epsilon_freq = 20;//getIntegerParameter(BDHITEA_EPSILONFREQ_STRING, 0, 0); // How often recalculate epsilon?
-	tea.epsmax = getFloatParameter(BDHITEA_EPSMAX_STRING, 999.f, 1); // Epsilon will never exceed 1, so epsmax=999 will never trigger halt by itself; used in capricious mode
-	tea.unlisted = 1;
 	 
 	cudaMalloc(&tea.rforce, par.Ntr * par.Ntot * sizeof(float4));
 	cudaMalloc(&tea.mforce, par.Ntr * par.Ntot * sizeof(float4));
@@ -27,9 +22,9 @@ void initTeaIntegrator(){
 
 	cudaMalloc(&tea.d_epsilon, par.Ntot * par.Ntr * sizeof(float));
 	cudaMalloc(&tea.d_ci, par.Ntot * par.Ntr * sizeof(float4));
-	cudaMalloc(&tea.d_beta_ij, par.Ntr * par.Ntr * sizeof(float));
+	cudaMalloc(&tea.d_beta_ij, par.Ntr * sizeof(float));
     tea.h_epsilon = (float*) malloc(par.Ntot * par.Ntr * sizeof(float));
-	tea.h_beta_ij = (float*) malloc(par.Ntr * par.Ntr * sizeof(float));
+	tea.h_beta_ij = (float*) malloc( par.Ntr * sizeof(float));
 
 	checkCUDAError("tea memory allocation");
 	cudaMemcpyToSymbol(c_tea, &tea, sizeof(Tea), 0, cudaMemcpyHostToDevice);
@@ -41,8 +36,8 @@ void initTeaIntegrator(){
 
 void integrateTea(){
 	// Pregenerate random forces
-	integrateTea_prepare<<<par.Ntot/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_f, d_r);
-	integrateTea_kernel_unlisted<<<par.Ntot/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_f, d_r);
+	integrateTea_prepare<<<(par. Ntr * par.Ntot) / BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_f, d_r);
+	integrateTea_kernel_unlisted<<<(par. Ntr * par.Ntot) / BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_f, d_r);
 	checkCUDAError("integrate TEA prepare and kernel");
 }
 
@@ -64,7 +59,7 @@ void updateTea(long long int step){
 	const int N = par.Ntot;
 	if (update_epsilon){
 		// Calculate relative coupling
-		integrateTea_epsilon_unlisted<<<par.Ntr * par.Ntot/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
+		integrateTea_epsilon_unlisted<<<(par.Ntr * par.Ntot) / BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
 		// Dowload epsilon`s
 		cudaMemcpy(tea.h_epsilon, tea.d_epsilon, par.Ntr * par.Ntot * sizeof(float), cudaMemcpyDeviceToHost);
 		checkCUDAError("copy epsilon from device");

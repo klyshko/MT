@@ -26,7 +26,7 @@ __device__ inline void operator+=(double4 &a, const float4 &b){
 __global__ void integrateTea_prepare(Coord* d_f, Coord* d_r){
 	// Precalculate random forces and apply pulling forces
 	const int d_i = blockIdx.x*blockDim.x + threadIdx.x;
-	if(d_i < c_par.Ntot){
+	if(d_i < c_par.Ntot * c_par.Ntr){
 		// Random force
 		const float var = sqrtf(2.0f * KB * c_par.Temp * c_par.gammaR / c_par.dt);//c_langevin.var;                 /////// sqrt(2 kb T gamma/dt)
 		float4 df = rforce(d_i);
@@ -158,7 +158,7 @@ __device__ inline float4 integrateTea_force(const float4& coord1, const int idx2
 __global__ void integrateTea_kernel_unlisted(Coord* d_f, Coord* d_r){
 	// Pairist-free version of  integrateTea_kernel
 	const int d_i = blockIdx.x*blockDim.x + threadIdx.x;
-	if(d_i < c_par.Ntot){
+	if(d_i < c_par.Ntot * c_par.Ntr){
 		int i;
 		float4 coord = c_tea.d_ci[d_i]; // Not coord yet!
 		float4 f = c_tea.mforce[d_i];
@@ -200,17 +200,19 @@ __global__ void integrateTea_kernel_unlisted(Coord* d_f, Coord* d_r){
 		Coord ri = d_r[d_i];
 		Coord fi = d_f[d_i];
 
-		float4 rf_ang = make_float4(0,0,0,0);
+		float4 rf_ang = make_float4(0.0, 0.0, 0.0, 0.0);
 		rf_ang = rforce(d_i + c_par.Ntot*c_par.Ntr);
 
-		ri.x = coord.x;
-		ri.y = coord.y;
-		ri.z = coord.z;
+		if(!c_top.fixed[d_i % c_par.Ntot]){
+			ri.x = coord.x;
+			ri.y = coord.y;
+			ri.z = coord.z;
 
-		ri.fi    += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*fi.fi  + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.x;
-		ri.psi   += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*fi.psi + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.y;
-		ri.theta += (c_par.dt/c_par.gammaTheta)*fi.theta + c_par.varTheta*rf_ang.z;
-
+			ri.fi    += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*fi.fi  + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.x;
+			ri.psi   += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*fi.psi + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.y;
+			ri.theta += (c_par.dt/c_par.gammaTheta)*fi.theta + c_par.varTheta*rf_ang.z;
+		} 
+		
 		d_r[d_i] = ri;
 
 		// Update energies
