@@ -64,7 +64,7 @@ void updateTea(long long int step){
 		cudaMemcpy(tea.h_epsilon, tea.d_epsilon, par.Ntr * par.Ntot * sizeof(float), cudaMemcpyDeviceToHost);
 		checkCUDAError("copy epsilon from device");
 
-		printf("epsilon: [ ");
+		//printf("epsilon: [ ");
 		for (int t = 0; t < par.Ntr; ++t){
 			double epsilon = 0.0;
 			for (int i = 0; i < N; ++i){
@@ -93,9 +93,9 @@ void updateTea(long long int step){
 				tea.h_beta_ij[t] = (1. - sqrt(1. - a)) / a; // eq. (26)
 			}
 			tea.h_epsilon[t] = epsilon; // We slowly overwrite the beginning of h_epsilon with per-trajectory epsilons to later output them
-			printf("%lf ", epsilon);
+			//printf("%lf ", epsilon);
 		}
-		printf("]\n");
+		//printf("]\n");
 		cudaMemcpy(tea.d_beta_ij, tea.h_beta_ij, par.Ntr * sizeof(float), cudaMemcpyHostToDevice);
 		checkCUDAError("copy betaij to device");
 	}
