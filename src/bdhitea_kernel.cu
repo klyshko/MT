@@ -9,19 +9,9 @@
 
 
 
-//#include "../gsop.cuh"
 #include "bdhitea.cuh"
 //#define PRINT_HI_TENSORS // Enable to print tensor values. Should never be used in production. Calling `cudaDeviceSetLimit(cudaLimitPrintfFifoSize, 900000000);` is recommended if you do not want to lose any values!
 
-
-/*
-__device__ inline void operator+=(float4 &a, const float4 &b){
-	a.x+=b.x; a.y+=b.y; a.z+=b.z; a.w+=b.w;
-}
-__device__ inline void operator+=(double4 &a, const float4 &b){
-	a.x+=b.x; a.y+=b.y; a.z+=b.z; a.w+=b.w;
-}
-*/
 
 __global__ void integrateTea_prepare(Coord* d_f, Coord* d_r){
 	// Precalculate random forces and apply pulling forces

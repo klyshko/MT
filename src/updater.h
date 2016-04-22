@@ -12,3 +12,4 @@ void OutputForces();
 void update(long long int step, int* mt_len);
 int change_conc(int* delta, int* mt_len);
 void mt_length(long long int step, int* mt_len);
+void hydrolyse();

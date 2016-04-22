@@ -57,7 +57,8 @@
 #define PARAMETER_BENDING_W_THETA				"W_theta"
 #define PARAMETER_BENDING_PSI_0					"psi0"
 #define PARAMETER_BENDING_FI_0					"fi0"
-#define PARAMETER_BENDING_THETA_0				"theta0"
+#define PARAMETER_BENDING_THETA0_GDP			"theta0_gdp"
+#define PARAMETER_BENDING_THETA0_GTP			"theta0_gtp"
 
 #define PARAMETER_LONGITUDINAL_A				"A_long"
 #define PARAMETER_LONGITUDINAL_B				"b_long"
@@ -215,8 +216,12 @@
 #define CONC                                   "conc"
 #define CONST_CONC                             "is_const_conc"
 
+#define HYDROLYSIS 								"hydrolysis"
+#define KHYDRO 									"khydro"
+
 #define PARAMETER_GAMMA_R						"gammaR"
 #define PARAMETER_GAMMA_THETA					"gammaTheta"
+#define PARAMETER_VISCOSITY						"viscosity"
 
 #define PARAMETER_LJ_ON							"LJ_on"
 #define PARAMETER_LJPAIRSCUTOFF					"LJPairsCutoff"
@@ -245,6 +250,7 @@ typedef struct {
 	real gammaR;
 	real varTheta;
 	real gammaTheta;
+	real viscosity;
     real freeze_temp;
     bool is_assembly;
     bool is_const_conc;
@@ -267,12 +273,16 @@ typedef struct {
 	real B_theta;	
 	real psi_0;	
 	real fi_0;	
-	real theta_0;	
-
+	real theta0_gtp;	
+	real theta0_gdp;
     real A_lat;
     real A_long;
     real D_lat;
     real D_long;
+
+    bool hydrolysis;
+    real khydro;
+    long int hydrostep;
 
     bool is_wall;
     real rep_h;

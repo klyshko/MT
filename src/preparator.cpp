@@ -148,7 +148,8 @@ void initParameters(int argc, char* argv[]){
     par.B_theta = getFloatParameter(PARAMETER_BENDING_B_THETA);
     par.fi_0 = getFloatParameter(PARAMETER_BENDING_FI_0);
     par.psi_0 = getFloatParameter(PARAMETER_BENDING_PSI_0);
-    par.theta_0 = getFloatParameter(PARAMETER_BENDING_THETA_0);
+    par.theta0_gdp = getFloatParameter(PARAMETER_BENDING_THETA0_GDP);
+    par.theta0_gtp = getFloatParameter(PARAMETER_BENDING_THETA0_GTP);
 
     if (getYesNoParameter(PARAMETER_LJ_ON, 1, 0)){
     	par.lj_on = true;
@@ -180,9 +181,36 @@ void initParameters(int argc, char* argv[]){
     } else {
     	par.is_const_conc = false;
     }
+
+    if (getYesNoParameter(HYDROLYSIS, 1, 0)){
+        par.hydrolysis = true;
+        par.khydro = getFloatParameter(KHYDRO);
+        par.hydrostep = (long int) (0.02 * 1000000000000 / (par.dt * par.khydro));
+    } else {
+        par.hydrolysis = false;
+    }
+
+    for(int traj = 0; traj < par.Ntr; traj++){
+        if (par.hydrolysis){
+           for(int i = 0; i < par.Ntot; i++){
+                top.gtp[i + traj*par.Ntot] = 1;     
+            } 
+        } else {
+            for(int i = 0; i < par.Ntot; i++){
+                top.gtp[i + traj*par.Ntot] = 0;     
+            }
+        }   
+    }
+
     par.Temp = getFloatParameter(PARAMETER_TEMPERATURE);
-    par.gammaR = getFloatParameter(PARAMETER_GAMMA_R);
-    par.gammaTheta = getFloatParameter(PARAMETER_GAMMA_THETA);
+    par.viscosity = getFloatParameter(PARAMETER_VISCOSITY);
+    if (par.hdi_on) {
+        par.gammaR = 6 * M_PI * par.viscosity * tea.a;
+    } else {
+        par.gammaR = 6 * M_PI * par.viscosity * r_mon;
+    }
+    par.gammaTheta = 8 * M_PI * par.viscosity * pow(r_mon, 3); 
+    
     par.varR = sqrtf(2.0f*KB*par.Temp*par.dt/par.gammaR);
     par.varTheta = sqrtf(2.0f*KB*par.Temp*par.dt/par.gammaTheta);
     par.alpha = getFloatParameter(ALPHA_GEOMETRY);
@@ -219,6 +247,16 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
         else if(pdb.atoms[i].name[1] == 'B')
             top.mon_type[i] = 1;
     }
+
+    top.gtp = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
+
+    top.on_tubule = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
+
+    for(int traj = 0; traj < par.Ntr; traj++){
+        for(i = 0; i < par.Ntot; i++){
+            top.on_tubule[i + traj*par.Ntot] = 0;     
+        } 
+    } 
 
      //initialising fixed atoms list
     top.fixed = (bool*)calloc(par.Ntot, sizeof(bool));

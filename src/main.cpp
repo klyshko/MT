@@ -64,6 +64,8 @@ int main(int argc, char *argv[]){
     exit(0);
 #endif
 
+    srand(par.rseed);
+
     initTimer();
 
     if (par.is_assembly){

@@ -86,6 +86,8 @@ typedef struct{
 		bool* fixed;
 		bool* extra;
         int* mon_type;
+        int* gtp;
+        int* on_tubule;
 } Topology;
 
 typedef struct{

@@ -17,3 +17,4 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f);
 void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
 void deleteIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
 void initIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energies);
+

@@ -108,7 +108,6 @@ int change_conc(int* delta, int* mt_len){
                     top.extra[i + tr * par.Ntot+1] = false;
                     float x,y;
                     for(int j = 0; j > -1 ; j++) {
-                        srand(j*time(NULL)-i);
                         x = par.rep_r - 2*(rand() % int(par.rep_r));
                         y = par.rep_r - 2*(rand() % int(par.rep_r));
                         if (x*x + y*y <= par.rep_r * par.rep_r){   //// check if its in cylinder
@@ -150,16 +149,15 @@ void mt_length(long long int step, int* mt_len){
     for (int traj = 0; traj < par.Ntr; traj++){
         int sum = 0;
 
-        int protofilamentsLength[PF_NUMBER] = {0,0,0,0,0,0,0,0,0,0,0,0,0};
+        //int protofilamentsLength[PF_NUMBER] = {0,0,0,0,0,0,0,0,0,0,0,0,0};
         for (int i = traj * par.Ntot; i < (traj + 1) * par.Ntot; i++) {
 
             float rad = sqrt(r[i].x * r[i].x + r[i].y * r[i].y);
-            if ((rad < R_MT + R_THRES) && (rad > R_MT - R_THRES)) {
+            if ((rad < R_MT + R_THRES) && (rad > R_MT - R_THRES) && (cosf(r[i].theta) > cosf(ANG_THRES))) {
                
             // detect particles inside microtubule 
-                if (cosf(r[i].theta) > cosf(ANG_THRES)){
-                    sum++;
-                }
+                sum++;
+                top.on_tubule[i] = 1;
 
             /*  
                 for (int j = 0; j < PF_NUMBER; j++){
@@ -190,6 +188,8 @@ void mt_length(long long int step, int* mt_len){
 
                 }
                 */
+            } else {
+                top.on_tubule[i] = 0;
             }
         }
         /*
@@ -214,4 +214,22 @@ void mt_length(long long int step, int* mt_len){
     fprintf(mtLenFile, "\n");
     fclose(mtLenFile);
         
+}
+
+void hydrolyse(){
+    
+    double prob;
+    for(int i = 0; i < par.Ntot; i+=2){
+        for (int tr = 0; tr < par.Ntr; tr++){
+            if (top.gtp[i + tr * par.Ntot] == 1){
+                prob = rand() / (double)RAND_MAX;
+                if (prob < 0.02){
+                    top.gtp[i     + tr * par.Ntot] = 0;
+                    top.gtp[i + 1 + tr * par.Ntot] = 0;
+
+                    printf("*** Hydrolysis occured to dimer # %d trajectory #%d ***\n", i/2, tr);
+                }
+            }
+        }     
+    }
 }

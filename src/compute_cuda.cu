@@ -157,12 +157,23 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 	                    fi.psi   += c_par.B_psi		*	sinf(psiji 		- c_par.psi_0);
 	                    fi.fi	 += c_par.B_fi		*	sinf(fiji 		- c_par.fi_0	);
-	                    fi.theta += c_par.B_theta	*	sinf(thetaji 	- c_par.theta_0	);
+
+	                    if (c_top.gtp[p] == 1){
+	                    	fi.theta += c_par.B_theta	*	sinf(thetaji 	- c_par.theta0_gtp	);
+	                    } else{
+	                    	fi.theta += c_par.B_theta	*	sinf(thetaji 	- c_par.theta0_gdp	);
+	                    }	                    
 	                }
 	                else{
+
 	                    fi.psi   -= c_par.B_psi		*	sinf(psiij	- 	c_par.psi_0	);
 	                    fi.fi	 -= c_par.B_fi		*	sinf(fiij 		- c_par.fi_0	);
-	                    fi.theta -= c_par.B_theta	*	sinf(thetaij 	- c_par.theta_0	);
+
+	                    if (c_top.gtp[p] == 1){
+	                    	fi.theta -= c_par.B_theta	*	sinf(thetaij 	- c_par.theta0_gtp	);
+	                    } else{
+	                    	fi.theta -= c_par.B_theta	*	sinf(thetaij 	- c_par.theta0_gdp	);
+	                    }
 	                }
 	                
 	              	
@@ -267,19 +278,21 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	            	thetaij = - thetaji;
 	              	fiji = rj.fi - ri.fi;
 	                fiij = - fiji;
-	                
+           /// the angle between dimers is ruled by the dimer closest to the plus end, i.e. if it's GDP, then 0.2 rad, if GTP - 0 rad.
+	                int last = (ri.z > rj.z) ? (ind + traj * c_par.Ntot) : (j + traj * c_par.Ntot);
+	                float theta0 = (c_top.gtp[last] == 1) ? c_par.theta0_gtp : c_par.theta0_gdp;
+
 	                if(R_MON > 0){
 
 	                    fi.psi   += c_par.B_psi		*	sinf(psiji 		- c_par.psi_0);
 	                    fi.fi	 += c_par.B_fi		*	sinf(fiji 		- c_par.fi_0	);
-	                    fi.theta += c_par.B_theta	*	sinf(thetaji 	- c_par.theta_0	);
+	                    fi.theta += c_par.B_theta	*	sinf(thetaji 	- theta0	);
 	                }
 	                else{
 	                    fi.psi   -= c_par.B_psi		*	sinf(psiij	- 	c_par.psi_0	);
 	                    fi.fi	 -= c_par.B_fi		*	sinf(fiij 		- c_par.fi_0	);
-	                    fi.theta -= c_par.B_theta	*	sinf(thetaij 	- c_par.theta_0	);
-	                }
-	                
+	                    fi.theta -= c_par.B_theta	*	sinf(thetaij 	- theta0	);
+	                }    
 	              	
 	            }
 	            
@@ -734,28 +747,15 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 	              	fiji = rj.fi - ri.fi;
 	                fiij = - fiji;
 
-	              	if(R_MON > 0){
-	                    U_psi  	 += c_par.B_psi	 	* (1 - cosf(psiji 		- c_par.psi_0))		;
-	                    U_fi	 += c_par.B_fi	 	* (1 - cosf(fiji 		- c_par.fi_0))		;
-	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaji 	- c_par.theta_0))   ;
+	              	U_psi  	 += c_par.B_psi	  	* (1 - cosf(psiij 		- c_par.psi_0))		;
+	                U_fi	 += c_par.B_fi	  	* (1 - cosf(fiij 		- c_par.fi_0))		;
+	                if (c_top.gtp[p] == 1){
+	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaji 	- c_par.theta0_gtp))   ;
+	                } else {
+	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaji 	- c_par.theta0_gdp))   ;
 	                }
-	                else{
-	                    U_psi  	 += c_par.B_psi	  	* (1 - cosf(psiij 		- c_par.psi_0))		;
-	                    U_fi	 += c_par.B_fi	  	* (1 - cosf(fiij 		- c_par.fi_0))		;
-	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaij 	- c_par.theta_0))   ;
-	                }
-	              	/*
-	                if(R_MON > 0){
-	                    U_psi  	 += c_par.B_psi		/2	*	pow(rj.psi 		-	ri.psi 		- c_par.psi_0		,2);
-	                    U_fi	 += c_par.B_fi		/2	*	pow(rj.fi 		-	ri.fi 		- c_par.fi_0		,2);
-	                    U_teta	 += c_par.B_theta		/2	*	pow(rj.theta 	- 	ri.theta 	- c_par.theta_0	,2);
-	                }
-	                else{
-	                    U_psi  	 += c_par.B_psi	  	/2	*	pow(ri.psi 		- 	rj.psi 		- c_par.psi_0		,2);
-	                    U_fi	 += c_par.B_fi	  	/2	*	pow(ri.fi 		- 	rj.fi 		- c_par.fi_0		,2);
-	                    U_teta	 += c_par.B_theta		/2	*	pow(ri.theta 	- 	rj.theta 	- c_par.theta_0	,2);
-	                }
-	                */
+	                
+	                    
 	            }
 			}
 
@@ -806,28 +806,12 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 	              	fiji = rj.fi - ri.fi;
 	                fiij = - fiji;
 
-	             	if(R_MON > 0){
-	                    U_psi  	 += c_par.B_psi	 	* (1 - cosf(psiji 		- c_par.psi_0))		;
-	                    U_fi	 += c_par.B_fi	 	* (1 - cosf(fiji 		- c_par.fi_0))		;
-	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaji 	- c_par.theta_0))   ;
-	                }
-	                else{
-	                    U_psi  	 += c_par.B_psi	  	* (1 - cosf(psiij 		- c_par.psi_0))		;
-	                    U_fi	 += c_par.B_fi	  	* (1 - cosf(fiij 		- c_par.fi_0))		;
-	                    U_teta	 += c_par.B_theta	* (1 - cosf(thetaij 	- c_par.theta_0))   ;
-	                }
-	              	/*
-	                if(R_MON > 0){
-	                    U_psi  	 += c_par.B_psi		/2	*	pow(rj.psi 		-	ri.psi 		- c_par.psi_0		,2);
-	                    U_fi	 += c_par.B_fi		/2	*	pow(rj.fi 		-	ri.fi 		- c_par.fi_0		,2);
-	                    U_teta	 += c_par.B_theta		/2	*	pow(rj.theta 	- 	ri.theta 	- c_par.theta_0	,2);
-	                }
-	                else{
-	                    U_psi  	 += c_par.B_psi	  	/2	*	pow(ri.psi 		- 	rj.psi 		- c_par.psi_0		,2);
-	                    U_fi	 += c_par.B_fi	  	/2	*	pow(ri.fi 		- 	rj.fi 		- c_par.fi_0		,2);
-	                    U_teta	 += c_par.B_theta		/2	*	pow(ri.theta 	- 	rj.theta 	- c_par.theta_0	,2);
-	                }
-	                */
+	                int last = (ri.z > rj.z) ? (ind + traj * c_par.Ntot) : (j + traj * c_par.Ntot);
+	                float theta0 = (c_top.gtp[last] == 1) ? c_par.theta0_gtp : c_par.theta0_gdp;
+
+	             	U_psi  	 += c_par.B_psi	  	* (1 - cosf(psiij 		- c_par.psi_0))		;
+					U_fi	 += c_par.B_fi	  	* (1 - cosf(fiij 		- c_par.fi_0))		;
+	                U_teta	 += c_par.B_theta	* (1 - cosf(thetaij 	- theta0))   ;
 	            }
 			}
 #endif
@@ -1066,12 +1050,21 @@ void initIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energie
 	checkCUDAError("d_mon_type allocation");
 	cudaMalloc((void**)&(topGPU.extra), par.Ntr * par.Ntot*sizeof(bool));
 	checkCUDAError("topGPU.extra allocation");
+	cudaMalloc((void**)&(topGPU.gtp), par.Ntr * par.Ntot*sizeof(int));
+	checkCUDAError("topGPU.gtp allocation");
+	cudaMalloc((void**)&(topGPU.on_tubule), par.Ntr * par.Ntot*sizeof(int));
+	checkCUDAError("topGPU.extra allocation");
+
 	cudaMemcpy(topGPU.fixed, top.fixed, par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
 	checkCUDAError("fixed copy");
 	cudaMemcpy(topGPU.mon_type, top.mon_type, par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("montype copy");
 	cudaMemcpy(topGPU.extra, top.extra, par.Ntr * par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
 	checkCUDAError("extra copy");
+	cudaMemcpy(topGPU.gtp, top.gtp, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+	checkCUDAError("gtp copy");
+	cudaMemcpy(topGPU.on_tubule, top.on_tubule, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+	checkCUDAError("on tubule copy");
 
 	if (par.lj_on){
 		topGPU.maxLJPerMonomer = 256;  ///I hope it will be enough       =top.maxLJPerMonomer;
@@ -1094,7 +1087,6 @@ void initIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energie
 		cudaMalloc((void**)&d_energies, par.Ntot*par.Ntr * sizeof(Energies));
 		checkCUDAError("d_energies allocation");
     }
-
 
 	initRand(par.rseed, 2*par.Ntot*par.Ntr);
 }
@@ -1128,7 +1120,6 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 	if (par.hdi_on) {
 		initTeaIntegrator();																	
-		//Hydrodynamics integrator;
 	} 
 
     int* mt_len = (int*)malloc(par.Ntr * sizeof(int));
@@ -1151,7 +1142,17 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 			}
 		}
 
-		if(step % par.stride == 0){ //every stride steps do energy computing and outputing DCD
+		if (par.hydrolysis){
+			if(step % par.hydrostep == 0){
+				//printf("Making hydrolysis: step = %ld\n", par.hydrostep);
+				hydrolyse();
+				cudaMemcpy(topGPU.gtp, top.gtp, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+				checkCUDAError("gtp copy");        
+			}
+		}
+		
+
+		if(step % par.stride == 0){ //every stride steps do energy computing / outputing DCD / mt_length measurements  / const concentration
 		
 			if (par.out_energy) {
 	            energy_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_energies);
@@ -1175,7 +1176,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 					memcpy(mt_len_prev, mt_len, par.Ntr*sizeof(int));
 					mt_length(step, mt_len);
-		
+							
 					if (par.is_const_conc){
 						for (int i = 0; i < par.Ntr; i++){
 							mt_len_prev[i] = mt_len[i] - mt_len_prev[i];
@@ -1186,8 +1187,8 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 							checkCUDAError("extra copy to device");
 							cudaMemcpy(d_r, r, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
 							checkCUDAError("from r to d_r copy");
-							cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
-							checkCUDAError("copy parameters to const memory");
+							//cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
+							//checkCUDAError("copy parameters to const memory");
 
 							//cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
 							//checkCUDAError("copy of topGPU pointer to const memory");
@@ -1211,10 +1212,9 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		checkCUDAError("compute_kernel");
 		
 		if (par.hdi_on) {
-				updateTea(step);
-				integrateTea();
-																///// loop for HDI
-			//Hydrodynamics integrator;
+			updateTea(step);
+			integrateTea();
+
 		} else {
 			integrate_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
 			checkCUDAError("integrate_kernel");
