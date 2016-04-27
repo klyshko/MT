@@ -76,6 +76,13 @@ void update(long long int step, int* mt_len){
     printTime(step);
     printEstimatedTimeleft((real)step/(real)par.steps);
     saveCoordDCD();
+    if (par.hydrolysis && (step % (par.stride * 10) == 0) ){
+        if (step == 0){
+            FILE* firsttime = fopen("dcd/hydrolysis.pdb", "w");
+            fclose(firsttime);
+        }
+        appendCoordPDB();
+    }
 
     if (par.out_force){
     	OutputSumForce();
@@ -145,6 +152,10 @@ int change_conc(int* delta, int* mt_len){
 }
 
 void mt_length(long long int step, int* mt_len){
+    if (step == 0){
+        FILE* first = fopen("mt_len.dat", "w");
+        fclose(first);
+    }
 
     for (int traj = 0; traj < par.Ntr; traj++){
         int sum = 0;

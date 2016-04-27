@@ -7,7 +7,7 @@ Parameters par;
 Topology top;
 Energies* energies;
 
-PDB pdb, pdb_ang;
+PDB pdb, pdb_ang, coordspdb;
 DCD dcd;
 XYZ xyz;
 

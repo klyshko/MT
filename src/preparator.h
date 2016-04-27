@@ -11,3 +11,5 @@ void saveCoordDCD();
 void writeRestart(long long int step);
 void readRestart();
 void AssemblyInit();
+
+void appendCoordPDB();

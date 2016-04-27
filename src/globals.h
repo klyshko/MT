@@ -14,6 +14,7 @@ extern Topology top;
 extern Energies* energies;
 
 extern PDB pdb;
+extern PDB coordspdb;
 extern PDB pdb_ang;
 extern DCD dcd;
 extern XYZ xyz;

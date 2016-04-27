@@ -226,6 +226,18 @@ void initParameters(int argc, char* argv[]){
     	printf("Error! You want constant concentration! Load structure with extra particles (chain X) to support constant concentration!\n");
     	exit(-1);
     } 
+
+    if (par.hydrolysis) {
+        coordspdb.atomCount = par.Ntot * par.Ntr;
+        coordspdb.atoms = (PDBAtom*)malloc(coordspdb.atomCount * sizeof(PDBAtom));
+        for (int tr = 0; tr < par.Ntr; tr++ ){
+            for (int i = 0; i < par.Ntot; i++){
+                memcpy(&(coordspdb.atoms[i + tr * par.Ntot]), &(pdb.atoms[i]), sizeof(PDBAtom));
+            }
+        }
+
+    }
+    
     
 }
 
@@ -234,9 +246,9 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
     int i, j;
     readPDB(filename_xyz, &pdb);
     printf("Building topology....\n");
-    
+
     par.Ntot = pdb.atomCount;
-    
+
     r = (Coord*)calloc(par.Ntot*par.Ntr, sizeof(Coord));
     f = (Coord*)calloc(par.Ntot*par.Ntr, sizeof(Coord));
 
@@ -581,6 +593,36 @@ void saveCoordDCD(){
         dcdWriteFrame(dcd);
         dcdClose(dcd);
     }
+}
+
+void appendCoordPDB(){
+
+    /*
+typedef struct {
+
+  int id;
+  char   name[5], chain, resName[4], altLoc;
+  int    resid;
+  double x, y, z;
+
+  double occupancy;
+  double beta;
+
+} PDBAtom;
+
+    */
+    int i;
+    for(int j = 0; j < par.Ntr; j++){
+        for(i = 0; i < par.Ntot; i++){
+            coordspdb.atoms[i+par.Ntot*j].x = (float)r[i+par.Ntot*j].x;
+            coordspdb.atoms[i+par.Ntot*j].y = (float)r[i+par.Ntot*j].y;
+            coordspdb.atoms[i+par.Ntot*j].z = (float)r[i+par.Ntot*j].z;
+            coordspdb.atoms[i+par.Ntot*j].id = i + par.Ntot * j;
+            coordspdb.atoms[i+par.Ntot*j].beta = (double)j;
+            coordspdb.atoms[i+par.Ntot*j].occupancy = (double)top.gtp[i+par.Ntot*j];
+        }
+    }    
+    appendPDB("dcd/hydrolysis.pdb", &coordspdb);
 }
 
 

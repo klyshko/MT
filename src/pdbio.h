@@ -56,5 +56,6 @@ void readPDB(const char* filename, PDB* pdbData);
 void readCoordinatesFromPDB(const char* filename, double* x, double* y, double* z, int count);
 void writePDB(const char* filename, PDB* pdbData);
 void writePDB(const char* filename, PDB* pdbData, int printConnections);
+void appendPDB(const char* filename, PDB* pdbData);
 void printAtom(PDBAtom atomData);
 void printAtomToFile(FILE* file, PDBAtom atomData);

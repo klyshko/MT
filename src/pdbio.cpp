@@ -331,6 +331,48 @@ void writePDB(const char* filename, PDB* pdbData, int printConnections){
 	printf("Done saving PDB.\n");
 }
 
+void appendPDB(const char* filename, PDB* pdbData){
+	printf("Appending PDB '%s'...\n", filename);
+	FILE* file = fopen(filename, "a");
+	int i, j;
+	
+	if(pdbData->atomCount < 100000){
+		for(i = 0; i < pdbData->atomCount; i++){
+			fprintf(file, "ATOM  %5d %-4s%c%3s %c%4d    %8.3f%8.3f%8.3f%6.2f%6.2f\n",
+									i + 1,
+									pdbData->atoms[i].name,
+									pdbData->atoms[i].altLoc,
+									pdbData->atoms[i].resName,
+									pdbData->atoms[i].chain,
+									pdbData->atoms[i].resid,
+									pdbData->atoms[i].x,
+									pdbData->atoms[i].y,
+									pdbData->atoms[i].z,
+									pdbData->atoms[i].occupancy,
+									pdbData->atoms[i].beta);
+		}
+	} else {
+		for(i = 0; i < pdbData->atomCount; i++){
+			fprintf(file, "ATOM  %5x %-4s%c%3s %c%4d    %8.3f%8.3f%8.3f%6.2f%6.2f\n",
+									i + 1,
+									pdbData->atoms[i].name,
+									pdbData->atoms[i].altLoc,
+									pdbData->atoms[i].resName,
+									pdbData->atoms[i].chain,
+									pdbData->atoms[i].resid,
+									pdbData->atoms[i].x,
+									pdbData->atoms[i].y,
+									pdbData->atoms[i].z,
+									pdbData->atoms[i].occupancy,
+									pdbData->atoms[i].beta);
+		}
+	}
+
+	fprintf(file, "END\n");
+	fclose(file);
+	printf("Done appending PDB.\n");
+}
+
 /*
  * Prints PDBAtom object in a PDB format.
  * Parameters:
