@@ -232,7 +232,7 @@ void hydrolyse(){
     double prob;
     for(int i = 0; i < par.Ntot; i+=2){
         for (int tr = 0; tr < par.Ntr; tr++){
-            if (top.gtp[i + tr * par.Ntot] == 1 && top.extra[i + tr * par.Ntot] == 0){
+            if (top.gtp[i + tr * par.Ntot] == 1 && !top.extra[i + tr * par.Ntot]){
                 prob = rand() / (double)RAND_MAX;
                 if (prob < 0.02){
                     top.gtp[i     + tr * par.Ntot] = 0;

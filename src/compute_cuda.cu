@@ -256,11 +256,11 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 				else dUdr = dmorse(c_par.D_long, c_par.A_long, dr) / dr;
 
 
+				if (c_par.barrier && (c_top.on_tubule[p] == 1 || c_top.on_tubule[j + c_par.Ntot * traj] == 1)){
+					if (dr != 0.0) 
+	            	dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr) / dr;
+				}
 
-#if defined(BARR)
-				if (dr != 0) 
-	            dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr) / dr;
-#endif
 	        
 				fi.x     += -dUdr*gradx;
 				fi.y     += -dUdr*grady;
@@ -445,17 +445,16 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 				if (dr == 0) dUdr = 0.0;
 				else if (c_top.mon_type[ind] != c_top.mon_type[j]) {
-					dUdr = dmorse(c_par.D_lat / 2, c_par.A_lat, dr) / dr;
+					dUdr = dmorse(c_par.D_lat / c_par.seam_coeff, c_par.A_lat, dr) / dr;
 				}
 	            else {
 	            	dUdr = dmorse(c_par.D_lat, c_par.A_lat, dr) / dr;
 	            }
-	            
 
-#if defined(BARR)
-			if (dr != 0) 
-            dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr) / dr;
-#endif
+	            if (c_par.barrier && (c_top.on_tubule[p] == 1 || c_top.on_tubule[j + c_par.Ntot * traj] == 1)){
+					if (dr != 0.0) 
+	            	dUdr += dbarr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr) / dr;
+				}
 
 				fi.x     += -dUdr*gradx;
 				fi.y     += -dUdr*grady;
@@ -794,9 +793,11 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 				//U_long += (c_par.A_long*(c_par.b_long * dr2 * exp(-dr / c_par.r0_long) - c_par.c_long*exp(-dr2/(c_par.d_long*c_par.r0_long)))); 
 
 
-#if defined(BARR)
-	            U_long += barr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr);
-#endif
+	            if (c_par.barrier && (c_top.on_tubule[p] == 1 || c_top.on_tubule[j + c_par.Ntot * traj] == 1)){
+					
+	            	 U_long += barr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr);
+				}
+
 				if(dr < ANGLE_CUTOFF){
 
 	            	psiji = rj.psi - ri.psi;
@@ -870,17 +871,16 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 			
 
 	            if (c_top.mon_type[ind] != c_top.mon_type[j]) {
-					U_lat += morse_en(c_par.D_lat / 2, c_par.A_lat, dr); 	
+					U_lat += morse_en(c_par.D_lat / c_par.seam_coeff, c_par.A_lat, dr); 	
 				}
 	            else {
 	            	U_lat += morse_en(c_par.D_lat, c_par.A_lat, dr);
 	            }
 				
+	            if (c_par.barrier && (c_top.on_tubule[p] == 1 || c_top.on_tubule[j + c_par.Ntot * traj] == 1)){
+					U_lat += barr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr);
+				}
 
-
-#if defined(BARR)
-	            U_lat += barr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr);
-#endif
 			}
 #endif
 		

@@ -182,6 +182,7 @@
 #define  W_DEXP_LAT    "w_dexp_lat"
 #define  W_DEXP_LONG   "w_dexp_long"
 
+#define  BARRIER 	   "barrier"
 #define  A_BARR_LONG   "a_barr_long"
 #define  R_BARR_LONG   "r_barr_long"
 #define  W_BARR_LONG   "w_barr_long"
@@ -198,7 +199,7 @@
 #define  A_LAT        "A_lat"
 #define  D_LONG       "D_long"
 #define  D_LAT        "D_lat"
-
+#define  SEAM_COEFF   "seam_coeff"
 
 #define  REPULSIVE_WALLS        "repulsive_walls"
 #define  REP_H                  "rep_h"
@@ -206,7 +207,7 @@
 #define  REP_EPS                "rep_eps"
 #define  REP_LEFTBORDER         "rep_leftborder"
 
-#define TUB_LENGTH               "tubule_length"
+#define TUB_LENGTH              "tubule_length"
 #define PAR_OUTPUT_ENERGY       "output_energy"
 #define PAR_OUTPUT_FORCE        "output_force"
 #define PAR_ASSEMBLY            "is_assembly" 
@@ -279,6 +280,7 @@ typedef struct {
     real A_long;
     real D_lat;
     real D_long;
+    real seam_coeff;
 
     bool hydrolysis;
     real khydro;
@@ -291,14 +293,14 @@ typedef struct {
     float zs[PARAMETER_LENGTH];
     real rep_leftborder;
 
-#if defined(BARR)
+    bool barrier;
     real a_barr_long;
     real r_barr_long;
     real w_barr_long;
     real a_barr_lat;
     real r_barr_lat;
     real w_barr_lat;
-#endif
+
 	real ljpairscutoff;
 	int ljpairsupdatefreq;
 	bool lj_on;	

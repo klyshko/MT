@@ -125,20 +125,24 @@ void initParameters(int argc, char* argv[]){
     par.A_lat  = getFloatParameter(A_LAT);
     par.D_long  = getFloatParameter(D_LONG);
     par.D_lat   = getFloatParameter(D_LAT);
+    par.seam_coeff = getFloatParameter(SEAM_COEFF);
 #else
    
     printf("No long/lat potentials. Continue to compute\n");
     //exit(0);
 #endif
     
-#if defined(BARR)
-    par.a_barr_long = getFloatParameter(A_BARR_LONG);
-    par.r_barr_long = getFloatParameter(R_BARR_LONG);
-    par.w_barr_long = getFloatParameter(W_BARR_LONG)/( 2*(sqrt(-2*log(0.5))) );
-    par.a_barr_lat = getFloatParameter(A_BARR_LAT);
-    par.r_barr_lat = getFloatParameter(R_BARR_LAT);
-    par.w_barr_lat = getFloatParameter(W_BARR_LAT)/( 2*(sqrt(-2*log(0.5))) );
-#endif
+    if (getYesNoParameter(BARRIER, 1, 0)){
+        par.barrier = true;
+        par.a_barr_long = getFloatParameter(A_BARR_LONG);
+        par.r_barr_long = getFloatParameter(R_BARR_LONG);
+        par.w_barr_long = getFloatParameter(W_BARR_LONG)/( 2*(sqrt(-2*log(0.5))) );
+        par.a_barr_lat = getFloatParameter(A_BARR_LAT);
+        par.r_barr_lat = getFloatParameter(R_BARR_LAT);
+        par.w_barr_lat = getFloatParameter(W_BARR_LAT)/( 2*(sqrt(-2*log(0.5))) );
+    } else {
+        par.barrier = false;
+    }
 
  //ANGLES_HARMONIC  
     par.C = getFloatParameter(PARAMETER_HARMONIC_C);
