@@ -1161,14 +1161,13 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 	            checkCUDAError("energy_copy");
 	        }
 
-			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
-			checkCUDAError("r copy");
-
 			if (par.out_force) {
 				cudaMemcpy(f, d_f, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyDeviceToHost);
 				checkCUDAError("forces copy");
 			}
 
+			cudaMemcpy(r, d_r, par.Ntr*par.Ntot*sizeof(Coord), cudaMemcpyDeviceToHost);
+			checkCUDAError("r copy");
 
 
 			if (par.tub_length) {

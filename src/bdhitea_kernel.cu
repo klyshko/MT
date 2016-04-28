@@ -66,6 +66,7 @@ __device__ inline float4 integrateTea_epsilon_local(const float4& coord1, const 
 	dr.x -= coord1.x;
 	dr.y -= coord1.y;
 	dr.z -= coord1.z;
+	//printf("%f\n", dr.x);
 	dr.w = sqrtf(dr.x*dr.x + dr.y*dr.y + dr.z*dr.z);
 	dr.x /= dr.w;
 	dr.y /= dr.w;
@@ -76,7 +77,6 @@ __device__ inline float4 integrateTea_epsilon_local(const float4& coord1, const 
 	dr.x = d._XX*d._XX + d._XY*d._XY + d._XZ*d._XZ;
 	dr.y = d._YX*d._YX + d._YY*d._YY + d._YZ*d._YZ;
 	dr.z = d._ZX*d._ZX + d._ZY*d._ZY + d._ZZ*d._ZZ;
-
 	return dr;
 }
 
@@ -91,7 +91,7 @@ __global__ void integrateTea_epsilon_unlisted(Coord* d_r){
 		float4 coord = make_float4(d_r[d_i].x, d_r[d_i].y, d_r[d_i].z, 0.f);
 		float4 sum = make_float4(0.f, 0.f, 0.f, 0.f);
 		for(i = i0; i < i0 + c_tea.Ntot; i++){
-			if (i != d_i ){
+			if (i != d_i && !c_top.extra[i] && !c_top.extra[d_i]){
 				sum += integrateTea_epsilon_local(coord, i, d_r);
 			}
 		}
@@ -148,7 +148,7 @@ __device__ inline float4 integrateTea_force(const float4& coord1, const int idx2
 __global__ void integrateTea_kernel_unlisted(Coord* d_f, Coord* d_r){
 	// Pairist-free version of  integrateTea_kernel
 	const int d_i = blockIdx.x*blockDim.x + threadIdx.x;
-	if(d_i < c_par.Ntot * c_par.Ntr){
+	if(d_i < c_par.Ntot * c_par.Ntr ){
 		int i;
 		float4 coord = c_tea.d_ci[d_i]; // Not coord yet!
 		float4 f = c_tea.mforce[d_i];
@@ -172,7 +172,7 @@ __global__ void integrateTea_kernel_unlisted(Coord* d_f, Coord* d_r){
 		// Calculate effective force
 		const int i0 = ((int)(d_i / c_tea.Ntot))*c_tea.Ntot;
 		for(i = i0; i < i0 + c_tea.Ntot; i++){
-			if (i == d_i) continue;
+			if (i == d_i || c_top.extra[d_i] || c_top.extra[i]) continue;
 			df = integrateTea_force(coord, i, ci, d_i);
 			f.x += df.x;
 			f.y += df.y;
@@ -193,7 +193,7 @@ __global__ void integrateTea_kernel_unlisted(Coord* d_f, Coord* d_r){
 		float4 rf_ang = make_float4(0.0, 0.0, 0.0, 0.0);
 		rf_ang = rforce(d_i + c_par.Ntot*c_par.Ntr);
 
-		if(!c_top.fixed[d_i % c_par.Ntot]){
+		if(!c_top.fixed[d_i % c_par.Ntot] && !c_top.extra[d_i]){
 			ri.x = coord.x;
 			ri.y = coord.y;
 			ri.z = coord.z;

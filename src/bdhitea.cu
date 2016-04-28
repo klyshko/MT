@@ -57,6 +57,17 @@ void deleteTeaIntegrator(){
 void updateTea(long long int step){
 	const int update_epsilon = (step % tea.epsilon_freq) == 0;
 	const int N = par.Ntot;
+
+	int* Nnoextra = (int*)calloc(par.Ntr, sizeof(int));
+	for(int tr = 0; tr < par.Ntr; tr++){
+		for(int j = 0; j < par.Ntot; j++){
+			if (!top.extra[j + par.Ntot * tr]){
+				Nnoextra[tr]++;
+			}
+		}
+		//printf("Nnoextra for [%d] is %d\n", tr, Nnoextra[tr]);
+	}
+
 	if (update_epsilon){
 		// Calculate relative coupling
 		integrateTea_epsilon_unlisted<<<(par.Ntr * par.Ntot) / BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r);
@@ -67,10 +78,14 @@ void updateTea(long long int step){
 		//printf("epsilon: [ ");
 		for (int t = 0; t < par.Ntr; ++t){
 			double epsilon = 0.0;
+
 			for (int i = 0; i < N; ++i){
+				//if (i%10==0) printf("[%d] %f\n", i, tea.h_epsilon[t*N + i]);
 				epsilon += tea.h_epsilon[t*N + i];
 			}
-			epsilon /= 3.*N*(3.*N - 3.); // Averaging, off-diagonal elements only
+
+			//epsilon /= 3.*N*(3.*N - 3.); // Averaging, off-diagonal elements only
+			epsilon /= 3.*Nnoextra[t]*(3.*Nnoextra[t] - 3.);
 			if (epsilon > 1.0){
 				if (tea.capricious){
 					printf("HI tensor is not diagonal enough for trajectory %d: epsilon = %lf -> 1.0!\n", t, epsilon);
@@ -82,7 +97,8 @@ void updateTea(long long int step){
 				printf("HI tensor is not diagonal enough for trajectory %d: epsilon = %lf > %f = tea_epsmax!\n", t, epsilon, tea.epsmax);
 				exit(-1);
 			}
-			double a = (3.*N-1.)*epsilon*epsilon - (3.*N-2.)*epsilon;
+			//double a = (3.*N-1.)*epsilon*epsilon - (3.*N-2.)*epsilon;
+			double a = (3.*Nnoextra[t]-1.)*epsilon*epsilon - (3.*Nnoextra[t]-2.)*epsilon;
 			if (fabs(a) < 1e-7){ // To avoid 0/0 division in eq. (26) we explicitly handle small a's
 				tea.h_beta_ij[t] = .5f;
 				if(tea.capricious && tea.a > 0.0f){

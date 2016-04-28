@@ -185,7 +185,7 @@ void initParameters(int argc, char* argv[]){
     if (getYesNoParameter(HYDROLYSIS, 1, 0)){
         par.hydrolysis = true;
         par.khydro = getFloatParameter(KHYDRO);
-        par.hydrostep = (long int) (0.02 * 1000000000000 / (par.dt * par.khydro));
+        par.hydrostep = (long int) (0.02 * 1000000000000 / (par.dt * par.khydro));   // timestep in ps (e-12), khydro is in 1/s, probability threshold is 2%
     } else {
         par.hydrolysis = false;
     }
