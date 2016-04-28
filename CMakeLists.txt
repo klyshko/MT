@@ -9,7 +9,6 @@ set(CMAKE_CXX_FLAGS -fPIC)
 set(CMAKE_C_FLAGS -fPIC)
 
 option(MORSE  "Use morse potential." ON)
-option(BARR  "Add barrier" OFF)
 option(READ_FROM_DCD  "Read coordinates from dcd" OFF)
 option(WITH_MPI "Build with MPI support." OFF)
 option(AVERAGE_LJ "Output average LJ force and st deviation" OFF)
@@ -33,10 +32,6 @@ if(${AVERAGE_LJ})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D AVERAGE_LJ")
 endif()
 
-if(${BARR})
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D BARR")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D BARR")
-endif()
 
 if(${MORSE})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D MORSE")
