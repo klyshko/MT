@@ -9,6 +9,19 @@
  */
 #include "compute_cuda.cuh"
 
+#define R 		500.0
+#define sphere  520
+#define index1 	16
+#define index2	17
+#define lj 		100.0
+#define stiff	300.0
+#define B 		1.5e-3
+
+#define XTWEEZ	511.12
+#define YTWEEZ	0.0
+#define ZTWEEZ	64.0
+
+
 __device__ __constant__ Parameters c_par;
 __device__ __constant__ Topology c_top;
 __device__ __constant__ Tea c_tea;
@@ -512,12 +525,69 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			        fi.x += ri.x * coeff ;
 			        fi.y += ri.y * coeff;
 			    }
-			} 	
-		    
+			} 
+
+
+			//// LJ with bead
+			rj = d_r[sphere + traj * c_par.Ntot];
+			float dr = sqrt(pow(ri.x-rj.x,2)+pow(ri.y-rj.y,2)+pow(ri.z-rj.z,2));
+
+		    if (dr < R + r_mon + 1.0) {
+		    	float mult = lj * 6 * pow(R,6) * pow(1.0 / dr, 8);
+		    	fi.x += mult * (ri.x-rj.x);
+		    	fi.y += mult * (ri.y-rj.y);
+		    	fi.z += mult * (ri.z-rj.z);
+		    }
+		    ///// harmonic with bead:
+
+		    /////
+
+
 
 			d_f[p] = fi;
 			fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
 			
+		} else {
+
+			ri = d_r[p];
+
+			for (int j = 0; j < c_par.Ntot; j++){
+				rj = d_r[j + traj * c_par.Ntot];
+				float dr = sqrt(pow(ri.x-rj.x,2) + pow(ri.y-rj.y,2) + pow(ri.z-rj.z,2));
+
+				if (dr < R + r_mon + 1.0 && j != sphere){
+					float mult = lj * 6 * pow(R,6) * pow(1.0 / dr, 8);
+			    	fi.x += mult * (ri.x-rj.x);
+			    	fi.y += mult * (ri.y-rj.y);
+			    	fi.z += mult * (ri.z-rj.z);
+				}
+				/*
+				if (j == index1){
+
+					fi.x += stiff * (dr - (R + r_mon + 1.0)) * (ri.x-rj.x) / dr;
+			    	fi.y += stiff * (dr - (R + r_mon + 1.0)) * (ri.y-rj.y) / dr;
+			    	fi.z += stiff * (dr - (R + r_mon + 1.0)) * (ri.z-rj.z) / dr;
+				}
+
+				if (j == index2){
+					
+					fi.x += stiff * (dr - (R + r_mon + 1.0 + 0.016)) * (ri.x-rj.x) / dr;
+			    	fi.y += stiff * (dr - (R + r_mon + 1.0 + 0.016)) * (ri.y-rj.y) / dr;
+			    	fi.z += stiff * (dr - (R + r_mon + 1.0 + 0.016)) * (ri.z-rj.z) / dr;
+				}
+*/
+			}
+
+			fi.x -= stiff * (ri.x - XTWEEZ);
+
+			fi.x -= B * (ri.x - XTWEEZ);
+			fi.y -= B * (ri.y - YTWEEZ);
+			fi.z -= B * (ri.z - ZTWEEZ);
+
+
+			d_f[p] = fi;
+			fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
+
 		}
 	}
 }
@@ -947,6 +1017,7 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 	if(p < c_par.Ntot * c_par.Ntr){
 		Coord f, ri;
 		if(!c_top.fixed[p % c_par.Ntot] && !(c_top.extra[p])){
+
 			f = d_f[p];
 			ri = d_r[p];
 			rf_xyz = rforce(p);
@@ -959,6 +1030,19 @@ __global__ void integrate_kernel(Coord* d_r, Coord* d_f){
 			ri.fi    += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.fi  + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.x;
 			ri.psi   += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*f.psi + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.y;
 			ri.theta += (c_par.dt/c_par.gammaTheta)*f.theta + c_par.varTheta*rf_ang.z;
+
+			d_r[p] = ri;
+
+		} else if (c_top.extra[p]){
+
+			f = d_f[p];
+			ri = d_r[p];
+			rf_xyz = rforce(p);
+			float gamm = 6 * M_PI * c_par.viscosity * R;
+			float var = sqrt(2 * KB * c_par.Temp * c_par.dt / gamm);
+			ri.x += (c_par.dt / gamm)*f.x + var * rf_xyz.x;
+			ri.y += (c_par.dt / gamm)*f.y + var * rf_xyz.y;
+			ri.z += (c_par.dt / gamm)*f.z + var * rf_xyz.z;
 
 			d_r[p] = ri;
 		}
@@ -1151,6 +1235,8 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 			}
 		}
 		
+		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
+		checkCUDAError("compute_kernel");
 
 		if(step % par.stride == 0){ //every stride steps do energy computing / outputing DCD / mt_length measurements  / const concentration
 		
@@ -1206,9 +1292,6 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 				}			
 			
 		}
-
-		compute_kernel<<<par.Ntot*par.Ntr/BLOCK_SIZE + 1, BLOCK_SIZE>>>(d_r, d_f);
-		checkCUDAError("compute_kernel");
 		
 		if (par.hdi_on) {
 			updateTea(step);

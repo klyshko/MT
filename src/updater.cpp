@@ -58,16 +58,19 @@ void OutputSumForce(){
 
 void OutputForces(){
 
-    for (int i = 0; i < par.Ntot * par.Ntr; i++){
+    int index = 520;
+    printf("force\t%f\t%f\t%f\n", f[index].x, f[index].y, f[index].z);
+
+    //for (int i = 0; i < par.Ntot * par.Ntr; i++){
         //printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
         //if (f[i].theta)
-        printf("Force[%d].theta = %f, fi = %f, psi = %f\n", i, f[i].theta, f[i].fi, f[i].psi);
-        printf("Angle[%d].theta = %f, fi = %f, psi = %f\n", i, r[i].theta, r[i].fi, r[i].psi);
+        
+        //printf("Angle[%d].theta = %f, fi = %f, psi = %f\n", i, r[i].theta, r[i].fi, r[i].psi);
         //printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
         //printf("Coord[%d].x = %f, y = %f, z = %f\n", i, r[i].x, r[i].y, r[i].z);
         //printf("type[%d]  %d\n", i, top.mon_type[i]);
 
-    }
+    //}
     
 }
 
