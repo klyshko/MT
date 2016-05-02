@@ -1143,7 +1143,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		}
 
 		if (par.hydrolysis){
-			if(step % par.hydrostep == 0){
+			if(step % par.hydrostep == 0 && step != 0){
 				//printf("Making hydrolysis: step = %ld\n", par.hydrostep);
 				hydrolyse();
 				cudaMemcpy(topGPU.gtp, top.gtp, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
