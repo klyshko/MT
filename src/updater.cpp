@@ -58,8 +58,10 @@ void OutputSumForce(){
 
 void OutputForces(){
 
-    int index = 520;
-    printf("force\t%f\t%f\t%f\n", f[index].x, f[index].y, f[index].z);
+    for (int i = 0; i < par.Ntr; i++){
+         printf("force%d\t%f\t%f\t%f\n",i, f[sphere + i * par.Ntr].x, f[sphere + i * par.Ntr].y, f[sphere + i * par.Ntr].z);
+    }
+   
 
     //for (int i = 0; i < par.Ntot * par.Ntr; i++){
         //printf("Force[%d].x = %f, y = %f, z = %f\n", i, f[i].x, f[i].y, f[i].z);
@@ -88,7 +90,7 @@ void update(long long int step, int* mt_len){
     }
 
     if (par.out_force){
-    	OutputSumForce();
+    	//OutputSumForce();
     	OutputForces();
     }
     if (par.out_energy){

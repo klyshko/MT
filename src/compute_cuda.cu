@@ -9,19 +9,6 @@
  */
 #include "compute_cuda.cuh"
 
-#define R 		500.0
-#define sphere  520
-#define index1 	16
-#define index2	17
-#define lj 		100.0
-#define stiff	300.0
-#define B 		1.5e-3
-
-#define XTWEEZ	511.12
-#define YTWEEZ	0.0
-#define ZTWEEZ	64.0
-
-
 __device__ __constant__ Parameters c_par;
 __device__ __constant__ Topology c_top;
 __device__ __constant__ Tea c_tea;
@@ -65,7 +52,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 	if(ind < c_par.Ntot && traj < c_par.Ntr){
 		
-		if (!c_top.extra[ind + traj * c_par.Ntot]){
+		if (true){
 
 			
 			ri = d_r[p];
@@ -488,20 +475,21 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 					rj = d_r[j + traj * c_par.Ntot];
 					dr = sqrt(pow(ri.x-rj.x,2)+pow(ri.y-rj.y,2)+pow(ri.z-rj.z,2));
 					
-					if( dr < lj_cutoff )
+					if( (ind == sphere || j == sphere) && (dr < R + r_mon + strep) )
 		            {	
 		            	real df = 6/pow(dr,8);
+ 	
+		            	fi.x += lj * pow(R,6)* df * (ri.x-rj.x);
+						fi.y += lj * pow(R,6)* df * (ri.y-rj.y);
+						fi.z += lj * pow(R,6)* df * (ri.z-rj.z); 
 
-		            #ifdef REGULARIZATION
-		            	if (c_par.ljscale * c_par.ljsigma6 * df * dr > c_par.gammaR * r_mon / c_par.dt ){
-		            		df = c_par.gammaR * r_mon / (c_par.dt * dr * c_par.ljscale * c_par.ljsigma6);	
-		            	} 
-					#endif	
-		            	
+					}
+					if ((ind != sphere && j != sphere) && (dr < lj_cutoff)){
+						real df = 6/pow(dr,8);
+ 	
 		            	fi.x += c_par.ljscale*c_par.ljsigma6*df*(ri.x-rj.x);
 						fi.y += c_par.ljscale*c_par.ljsigma6*df*(ri.y-rj.y);
-						fi.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z); 
-
+						fi.z += c_par.ljscale*c_par.ljsigma6*df*(ri.z-rj.z);
 					}
 				}
 
@@ -527,30 +515,42 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			    }
 			} 
 
+			if (ind == sphere) {
+				fi.x -= stiff * (ri.x - XTWEEZ);
+				fi.x -= B * (ri.x - XTWEEZ);
+				fi.y -= B * (ri.y - YTWEEZ);
+				fi.z -= B * (ri.z - ZTWEEZ);
+			}
+			
+
+
+
+
 
 			//// LJ with bead
+			/*
 			rj = d_r[sphere + traj * c_par.Ntot];
 			float dr = sqrt(pow(ri.x-rj.x,2)+pow(ri.y-rj.y,2)+pow(ri.z-rj.z,2));
 
-		    if (dr < R + r_mon + 1.0) {
+		    if (dr < R + r_mon + 3.5) {
 		    	float mult = lj * 6 * pow(R,6) * pow(1.0 / dr, 8);
 		    	fi.x += mult * (ri.x-rj.x);
 		    	fi.y += mult * (ri.y-rj.y);
 		    	fi.z += mult * (ri.z-rj.z);
 		    }
+		    */
 		    ///// harmonic with bead:
 
 		    /////
-
-
-
 			d_f[p] = fi;
 			fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
 			
-		} else {
+		}
+
+		/*else {
 
 			ri = d_r[p];
-
+/*
 			for (int j = 0; j < c_par.Ntot; j++){
 				rj = d_r[j + traj * c_par.Ntot];
 				float dr = sqrt(pow(ri.x-rj.x,2) + pow(ri.y-rj.y,2) + pow(ri.z-rj.z,2));
@@ -575,9 +575,9 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			    	fi.y += stiff * (dr - (R + r_mon + 1.0 + 0.016)) * (ri.y-rj.y) / dr;
 			    	fi.z += stiff * (dr - (R + r_mon + 1.0 + 0.016)) * (ri.z-rj.z) / dr;
 				}
-*/
-			}
 
+			}
+*//*
 			fi.x -= stiff * (ri.x - XTWEEZ);
 
 			fi.x -= B * (ri.x - XTWEEZ);
@@ -589,6 +589,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			fi = (Coord){0.0,0.0,0.0,0.0,0.0,0.0};
 
 		}
+		*/
 	}
 }
 
@@ -1000,12 +1001,31 @@ __global__ void LJ_kernel(const Coord* r){
 	                            pow(ri.y - rj.y,2)+
 	                            pow(ri.z - rj.z,2));
 
-	            if((dr < c_par.ljpairscutoff) && (i != j)){
+	            if ((j == sphere) && (dr < R + r_mon + strep + 2) && (i != j)){
+	            	c_top.LJCount[i + tr * c_par.Ntot]++;
+	                c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * tr + i * c_top.maxLJPerMonomer + c_top.LJCount[i + tr * c_par.Ntot] - 1] = j;
+	            }
+
+	            if((j != sphere) && (dr < c_par.ljpairscutoff) && (i != j)){
 	                c_top.LJCount[i + tr * c_par.Ntot]++;
 	                c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * tr + i * c_top.maxLJPerMonomer + c_top.LJCount[i + tr * c_par.Ntot] - 1] = j;
 	            }
         	}   
+    	} else {
+    		for(int j = 0; j < c_par.Ntot; j++){
+	            rj = r[j + tr * c_par.Ntot];
+	            real dr = sqrt(pow(ri.x - rj.x,2)+
+	                            pow(ri.y - rj.y,2)+
+	                            pow(ri.z - rj.z,2));
+
+	            if((dr < R + r_mon + strep + 2) && (i != j)){
+	                c_top.LJCount[i + tr * c_par.Ntot]++;
+	                c_top.LJ[c_top.maxLJPerMonomer * c_par.Ntot * tr + i * c_top.maxLJPerMonomer + c_top.LJCount[i + tr * c_par.Ntot] - 1] = j;
+	            }
+	        }
     	}
+
+
 	}
 }
 
@@ -1151,7 +1171,7 @@ void initIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energie
 	checkCUDAError("on tubule copy");
 
 	if (par.lj_on){
-		topGPU.maxLJPerMonomer = 256;  ///I hope it will be enough       =top.maxLJPerMonomer;
+		topGPU.maxLJPerMonomer = 512;  ///I hope it will be enough       =top.maxLJPerMonomer;
 		cudaMalloc((void**)&(topGPU.LJCount), par.Ntot*sizeof(int)*par.Ntr);
 		checkCUDAError("lj_count allocation");
 		cudaMalloc((void**)&(topGPU.LJ), par.Ntot*sizeof(int)*par.Ntr*topGPU.maxLJPerMonomer);

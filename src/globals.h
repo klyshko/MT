@@ -30,3 +30,14 @@ extern Energies* d_energies;
 
 extern Tea tea;
 extern __device__ __constant__ Tea c_tea;
+
+#define R 		500.0
+#define sphere  780
+#define lj 		50.0
+#define stiff	300.0
+#define B 		1.5e-3
+#define strep 	1.0
+
+#define XTWEEZ	(R + 8.12 + 2 + strep)
+#define YTWEEZ	0.0
+#define ZTWEEZ	64.0

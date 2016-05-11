@@ -201,7 +201,19 @@ __global__ void integrateTea_kernel_unlisted(Coord* d_f, Coord* d_r){
 			ri.fi    += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*fi.fi  + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.x;
 			ri.psi   += (c_par.dt/(c_par.gammaTheta * c_par.alpha))*fi.psi + (c_par.varTheta * sqrt(c_par.freeze_temp / c_par.alpha))*rf_ang.y;
 			ri.theta += (c_par.dt/c_par.gammaTheta)*fi.theta + c_par.varTheta*rf_ang.z;
+
 		} 
+
+		 else if (c_top.extra[d_i]){
+		 	
+			float4 rf_xyz = rf_ang;
+			float gamm = 6 * M_PI * c_par.viscosity * R;
+			float var = sqrt(2 * KB * c_par.Temp * c_par.dt / gamm);
+			ri.x += (c_par.dt / gamm)*fi.x + var * rf_xyz.x;
+			ri.y += (c_par.dt / gamm)*fi.y + var * rf_xyz.y;
+			ri.z += (c_par.dt / gamm)*fi.z + var * rf_xyz.z;
+		} 
+		
 		
 		d_r[d_i] = ri;
 
