@@ -59,7 +59,7 @@ void OutputSumForce(){
 void OutputForces(){
 
     for (int i = 0; i < par.Ntr; i++){
-         printf("force%d\t%f\t%f\t%f\n",i, f[sphere + i * par.Ntr].x, f[sphere + i * par.Ntr].y, f[sphere + i * par.Ntr].z);
+         printf("force%d\t%f\t%f\t%f\n",i, f[sphere + i * par.Ntot].x, f[sphere + i * par.Ntot].y, f[sphere + i * par.Ntot].z);
     }
    
 
