@@ -59,7 +59,8 @@ void OutputSumForce(){
 void OutputForces(){
 
     for (int i = 0; i < par.Ntr; i++){
-         printf("force%d\t%f\t%f\t%f\n",i, f[sphere + i * par.Ntot].x, f[sphere + i * par.Ntot].y, f[sphere + i * par.Ntot].z);
+        printf("force%d\t%f\t%f\t%f\n",i, f[sphere + i * par.Ntot].x, f[sphere + i * par.Ntot].y, f[sphere + i * par.Ntot].z);
+        printf("deltaz%d\t%f\t%f\t%f\n",i, B*(r[sphere + i * par.Ntot].x - XTWEEZ), B*(r[sphere + i * par.Ntot].y - YTWEEZ), B*(r[sphere + i * par.Ntot].z - ZTWEEZ));
     }
    
 

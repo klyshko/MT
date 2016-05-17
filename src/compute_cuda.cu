@@ -516,7 +516,16 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 			} 
 
 			if (ind == sphere) {
-				fi.x -= stiff * (ri.x - XTWEEZ);
+
+				dr = sqrt(pow(ri.x - 0.0, 2) + pow(ri.y - YTWEEZ, 2) + pow(ri.z - ZTWEEZ, 2));
+				
+				fi.x -= stiff * (dr - XTWEEZ) * (ri.x - 0.0) / dr;
+				fi.y -= stiff * (dr - XTWEEZ) * (ri.y - YTWEEZ) / dr;
+				fi.z -= stiff * (dr - XTWEEZ) * (ri.z - ZTWEEZ) / dr;
+
+				
+				//fi.x -= stiff * (ri.x - XTWEEZ);
+
 				fi.x -= B * (ri.x - XTWEEZ);
 				fi.y -= B * (ri.y - YTWEEZ);
 				fi.z -= B * (ri.z - ZTWEEZ);
