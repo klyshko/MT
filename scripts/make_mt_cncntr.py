@@ -53,6 +53,7 @@ for chain in chains:
 			pdbxyz.write("%s\n" % str(pdbat1))
 			pdbang.write("%s\n" % str(pdbat2))
 
+for chain in chains:
 		for mon in range(MT_len, MT_len + MT_extra):	
 			R 		 = R_MT
 			pdbat2.z  = 0.0
@@ -64,8 +65,8 @@ for chain in chains:
 			pdbat1.y          = 0.0
 			pdbat1.residueseq = mon/2 + 1
 			pdbat2.residueseq = mon/2 + 1
-			pdbat1.number     = mon + MT_len*(ord(chain)-ord(chains[0])) + 1 
-			pdbat2.number     = mon + MT_len*(ord(chain)-ord(chains[0])) + 1 
+			pdbat1.number     = MT_len * (len(chains) -1) + mon + MT_extra*(ord(chain)-ord(chains[0])) + 1 
+			pdbat2.number     = MT_len * (len(chains) -1) + mon + MT_extra*(ord(chain)-ord(chains[0])) + 1 
 			if mon%2 == 0:
 					pdbat1.name = 'CA'
 					pdbat2.name = 'CA'
