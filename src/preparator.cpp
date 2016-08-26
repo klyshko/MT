@@ -201,7 +201,7 @@ void initParameters(int argc, char* argv[]){
             } 
         } else {
             for(int i = 0; i < par.Ntot; i++){
-                top.gtp[i + traj*par.Ntot] = 0;     
+                top.gtp[i + traj*par.Ntot] = 1;     
             }
         }   
     }
