@@ -256,7 +256,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 				else dUdr = dmorse(c_par.D_long, c_par.A_long, dr) / dr;
 
 
-				if (c_par.barrier && (c_top.on_tubule[p] == 1 || c_top.on_tubule[j + c_par.Ntot * traj] == 1)){
+				if (c_par.barrier && (c_top.on_tubule_cur[p] == 0 && c_top.on_tubule_cur[j + c_par.Ntot * traj] == 0)){
 					if (dr != 0.0) 
 	            	dUdr += dbarr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr) / dr;
 				}
@@ -451,7 +451,7 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 	            	dUdr = dmorse(c_par.D_lat, c_par.A_lat, dr) / dr;
 	            }
 
-	            if (c_par.barrier && (c_top.on_tubule[p] == 1 || c_top.on_tubule[j + c_par.Ntot * traj] == 1)){
+	            if (c_par.barrier && (c_top.on_tubule_cur[p] == 0 && c_top.on_tubule_cur[j + c_par.Ntot * traj] == 0)){
 					if (dr != 0.0) 
 	            	dUdr += dbarr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr) / dr;
 				}
@@ -793,7 +793,7 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 				//U_long += (c_par.A_long*(c_par.b_long * dr2 * exp(-dr / c_par.r0_long) - c_par.c_long*exp(-dr2/(c_par.d_long*c_par.r0_long)))); 
 
 
-	            if (c_par.barrier && (c_top.on_tubule[p] == 1 || c_top.on_tubule[j + c_par.Ntot * traj] == 1)){
+	            if (c_par.barrier && (c_top.on_tubule_cur[p] == 0 && c_top.on_tubule_cur[j + c_par.Ntot * traj] == 0)){
 					
 	            	 U_long += barr(c_par.a_barr_long, c_par.r_barr_long, c_par.w_barr_long, dr);
 				}
@@ -877,13 +877,12 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 	            	U_lat += morse_en(c_par.D_lat, c_par.A_lat, dr);
 	            }
 				
-	            if (c_par.barrier && (c_top.on_tubule[p] == 1 || c_top.on_tubule[j + c_par.Ntot * traj] == 1)){
+	            if (c_par.barrier && (c_top.on_tubule_cur[p] == 0 && c_top.on_tubule_cur[j + c_par.Ntot * traj] == 0)){
 					U_lat += barr(c_par.a_barr_lat, c_par.r_barr_lat, c_par.w_barr_lat, dr);
 				}
 
 			}
 #endif
-		
 
 			if (c_par.lj_on){
 				for(int k = 0; k < c_top.LJCount[ind + traj * c_par.Ntot]; k++){
@@ -905,7 +904,6 @@ __global__ void energy_kernel(const Coord* d_r, Energies* d_energies){
 		en.U_psi = U_psi / 2;
 		en.U_fi = U_fi / 2;
 		en.U_teta = U_teta / 2;
-
 		d_energies[p] = en; 	
 	}
 }
@@ -1052,8 +1050,11 @@ void initIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energie
 	checkCUDAError("topGPU.extra allocation");
 	cudaMalloc((void**)&(topGPU.gtp), par.Ntr * par.Ntot*sizeof(int));
 	checkCUDAError("topGPU.gtp allocation");
-	cudaMalloc((void**)&(topGPU.on_tubule), par.Ntr * par.Ntot*sizeof(int));
-	checkCUDAError("topGPU.extra allocation");
+	cudaMalloc((void**)&(topGPU.on_tubule_cur), par.Ntr * par.Ntot*sizeof(int));
+	checkCUDAError("topGPU.on_tubule allocation");
+	cudaMalloc((void**)&(topGPU.on_tubule_prev), par.Ntr * par.Ntot*sizeof(int));
+	checkCUDAError("topGPU.on_tubule allocation");
+
 
 	cudaMemcpy(topGPU.fixed, top.fixed, par.Ntot*sizeof(bool), cudaMemcpyHostToDevice);
 	checkCUDAError("fixed copy");
@@ -1063,7 +1064,10 @@ void initIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energie
 	checkCUDAError("extra copy");
 	cudaMemcpy(topGPU.gtp, top.gtp, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("gtp copy");
-	cudaMemcpy(topGPU.on_tubule, top.on_tubule, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+
+	cudaMemcpy(topGPU.on_tubule_cur, top.on_tubule_cur, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+	checkCUDAError("on tubule copy");
+	cudaMemcpy(topGPU.on_tubule_prev, top.on_tubule_prev, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
 	checkCUDAError("on tubule copy");
 
 	if (par.lj_on){
@@ -1101,6 +1105,8 @@ void deleteIntegration(Coord* r, Coord* f, Parameters &par, Topology &top, Energ
 	cudaFree(topGPU.fixed);
 	cudaFree(topGPU.mon_type);
 	cudaFree(topGPU.extra);
+	cudaFree(topGPU.on_tubule_cur);
+	cudaFree(topGPU.on_tubule_prev);
 	cudaFree(topGPU.harmonic);
 	cudaFree(topGPU.longitudinal);
 	cudaFree(topGPU.lateral);
@@ -1124,7 +1130,7 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
     int* mt_len = (int*)malloc(par.Ntr * sizeof(int));
 	int* mt_len_prev = (int*)malloc(par.Ntr * sizeof(int));
-	//int* delta = (int*)malloc(par.Ntr * sizeof(int))
+	
 
 	for(long long int step = 0; step < par.steps; step++){				// <-- Start simulations
 
@@ -1171,10 +1177,19 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 
 
 			if (par.tub_length) {
+
+				memcpy(top.on_tubule_prev, top.on_tubule_cur, par.Ntr*par.Ntot*sizeof(int));
 				if (step != 0){
 
 					memcpy(mt_len_prev, mt_len, par.Ntr*sizeof(int));
 					mt_length(step, mt_len);
+
+					if (par.barrier) {
+						cudaMemcpy(topGPU.on_tubule_cur, top.on_tubule_cur, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+						//cudaMemcpy(topGPU.on_tubule_prev, top.on_tubule_prev, par.Ntr * par.Ntot*sizeof(int), cudaMemcpyHostToDevice);
+						checkCUDAError("on_tubule copy to device");
+					}
+					
 							
 					if (par.is_const_conc){
 						for (int i = 0; i < par.Ntr; i++){
@@ -1186,9 +1201,9 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 							checkCUDAError("extra copy to device");
 							cudaMemcpy(d_r, r, par.Ntot*par.Ntr*sizeof(Coord), cudaMemcpyHostToDevice);
 							checkCUDAError("from r to d_r copy");
+
 							//cudaMemcpyToSymbol(c_par, &par, sizeof(Parameters), 0, cudaMemcpyHostToDevice);
 							//checkCUDAError("copy parameters to const memory");
-
 							//cudaMemcpyToSymbol(c_top, &topGPU, sizeof(Topology), 0, cudaMemcpyHostToDevice);
 							//checkCUDAError("copy of topGPU pointer to const memory");
 						}
@@ -1196,14 +1211,15 @@ void compute(Coord* r, Coord* f, Parameters &par, Topology &top, Energies* energ
 		
 					update(step, mt_len);	
 					
-					} 
-					else{
-						update(step, mt_len);
-						mt_length(step, mt_len);
-					}
 				} else {
 					update(step, mt_len);
-				}			
+					mt_length(step, mt_len);
+				}
+				
+			} else {
+
+				update(step, mt_len);
+			}			
 			
 		}
 

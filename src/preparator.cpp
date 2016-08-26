@@ -266,11 +266,13 @@ void read_PDB(const char* filename_xyz, const char* filename_ang){
 
     top.gtp = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
 
-    top.on_tubule = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
+    top.on_tubule_cur = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
+    top.on_tubule_prev = (int*)calloc(par.Ntot*par.Ntr, sizeof(int));
 
     for(int traj = 0; traj < par.Ntr; traj++){
         for(i = 0; i < par.Ntot; i++){
-            top.on_tubule[i + traj*par.Ntot] = 0;     
+            top.on_tubule_cur[i + traj*par.Ntot] = 0;
+            top.on_tubule_prev[i + traj*par.Ntot] = 0;     
         } 
     } 
 

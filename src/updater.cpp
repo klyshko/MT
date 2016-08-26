@@ -168,7 +168,7 @@ void mt_length(long long int step, int* mt_len){
                
             // detect particles inside microtubule 
                 sum++;
-                top.on_tubule[i] = 1;
+                top.on_tubule_cur[i] = 1;
 
             /*  
                 for (int j = 0; j < PF_NUMBER; j++){
@@ -200,27 +200,26 @@ void mt_length(long long int step, int* mt_len){
                 }
                 */
             } else {
-                top.on_tubule[i] = 0;
+                top.on_tubule_cur[i] = 0;
             }
         }
         /*
-        int sum = 0;
-        for (int i = 0; i < PF_NUMBER; i++){
-            //if (protofilamentsLength[i] % 2) protofilamentsLength[i]--;
-            //printf("PF[%d] = %d\n", i, protofilamentsLength[i]);
-            sum += protofilamentsLength[i];
+            int sum = 0;
+            for (int i = 0; i < PF_NUMBER; i++){
+                //if (protofilamentsLength[i] % 2) protofilamentsLength[i]--;
+                //printf("PF[%d] = %d\n", i, protofilamentsLength[i]);
+                sum += protofilamentsLength[i];
 
-        }*/
+            }
+        */
         mt_len[traj] = sum;
         printf("tubule[%d]: %d\n", traj, sum);
-        /*char fileName[64];
-        sprintf(fileName, "mtlength%d.dat", traj);
-        */
     }
+
     FILE* mtLenFile = fopen("mt_len.dat", "a");
     fprintf(mtLenFile, "%lld\t" , step);
     for (int traj = 0; traj < par.Ntr; traj++){
-        fprintf(mtLenFile, "%f\t" , 4.0 * (float)mt_len[traj] / PF_NUMBER);
+        fprintf(mtLenFile, "%f\t" , 2 * r_mon * (float)mt_len[traj] / PF_NUMBER);
     }
     fprintf(mtLenFile, "\n");
     fclose(mtLenFile);
@@ -232,7 +231,7 @@ void hydrolyse(){
     double prob;
     for(int i = 0; i < par.Ntot; i+=2){
         for (int tr = 0; tr < par.Ntr; tr++){
-            if (top.gtp[i + tr * par.Ntot] == 1 && !top.extra[i + tr * par.Ntot]){
+            if (top.gtp[i + tr * par.Ntot] == 1 && !top.extra[i + tr * par.Ntot] && top.on_tubule_cur[i + tr * par.Ntot]*top.on_tubule_prev[i + tr * par.Ntot] == 1 ){
                 prob = rand() / (double)RAND_MAX;
                 if (prob < 0.02){
                     top.gtp[i     + tr * par.Ntot] = 0;
@@ -240,6 +239,18 @@ void hydrolyse(){
 
                     printf("*** Hydrolysis occured to dimer # %d trajectory #%d ***\n", i/2, tr);
                 }
+            }
+        }     
+    }
+
+    for(int i = 0; i < par.Ntot; i+=2){
+        for (int tr = 0; tr < par.Ntr; tr++){
+            if (top.gtp[i + tr * par.Ntot] == 0 && !top.extra[i + tr * par.Ntot] && top.on_tubule_cur[i + tr * par.Ntot] == 0 && top.on_tubule_prev[i + tr * par.Ntot] == 0 ){
+                    top.gtp[i     + tr * par.Ntot] = 1;
+                    top.gtp[i + 1 + tr * par.Ntot] = 1;
+
+                    printf("*** Transition to GTP occured to dimer # %d trajectory #%d ***\n", i/2, tr);
+                
             }
         }     
     }

@@ -26,7 +26,7 @@
 #define LARGENUMBER 999999
 
 #define PF_NUMBER 13
-#define ANG_THRES 0.18f
+#define ANG_THRES 0.22f
 #define R_THRES (r_mon * 1.5)
 
 #define Turn 13 //Monomers per turn(2PI) 
@@ -87,7 +87,8 @@ typedef struct{
 		bool* extra;
         int* mon_type;
         int* gtp;
-        int* on_tubule;
+        int* on_tubule_cur;
+        int* on_tubule_prev;
 } Topology;
 
 typedef struct{
