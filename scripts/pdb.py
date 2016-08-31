@@ -45,6 +45,7 @@ class PDBAtom:
         s += rjust(self.element[:2]    , 2)
 #        s += rjust(self.charge[:2]     , 2)
         return s
+
     @staticmethod
     def Atomizable(line):
         """Checks whether given line can be used to construct PDBAtom"""
@@ -53,3 +54,33 @@ class PDBAtom:
 def PDBReadFile(name):
     return [PDBAtom(i) for i in open(name,'r').readlines() if PDBAtom.Atomizable(i)]
 
+class PDBSystem:
+    def __init__(self, name):
+        if type(name) == type('loh'):
+            self.atoms = [PDBAtom(i) for i in open(name,'r').readlines() if PDBAtom.Atomizable(i)]
+        else:
+            self.atoms = name
+        self.atom_number = len(self.atoms)
+    def __str__(self):
+        return('Atomic system with number of ATOMs: {}'.format(self.atom_number))
+
+
+class PDBTrajectory:
+    def __init__(self, name):
+        frame = []
+        counter = 0
+        self.frames_number = 0
+        self.frames = []
+        pdbtraj = open(name,'r')
+        for line in pdbtraj:
+            if PDBAtom.Atomizable(line):
+                frame.append(PDBAtom(line))
+            if (line.split())[0] == 'END':
+                counter+=1
+                self.frames.append(PDBSystem(frame))
+                frame = []
+        self.frames_number = counter
+        pdbtraj.close()
+    def __str__(self):
+        return('Number of trajectories = {}: {} atoms in each'.format(self.frames_number, PDBSystem(self.frames[0]).atom_number))
+        

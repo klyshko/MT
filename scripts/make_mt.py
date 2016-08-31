@@ -21,8 +21,8 @@ if MT_len<tail_len:
 		print 'Tail can not be longer, than MT'
 		exit(0)
 
-pdbxyzfilename = 'xyz_{}.pdb'.format(MT_len)
-pdbangfilename = 'ang_{}.pdb'.format(MT_len)
+pdbxyzfilename = 'structs/xyz_{}.pdb'.format(MT_len)
+pdbangfilename = 'structs/ang_{}.pdb'.format(MT_len)
 pdbxyz = open(pdbxyzfilename, "w")
 pdbang = open(pdbangfilename, "w")
 
