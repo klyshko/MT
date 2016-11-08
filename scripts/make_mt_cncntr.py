@@ -16,7 +16,7 @@ if MT_len % 2:
 	MT_len += 1
 
 pdbxyzfilename = 'structs/xyz_{}_{}.pdb'.format(MT_len, MT_extra)
-pdbangfilename = 'strucuts/ang_{}_{}.pdb'.format(MT_len, MT_extra)
+pdbangfilename = 'structs/ang_{}_{}.pdb'.format(MT_len, MT_extra)
 pdbxyz = open(pdbxyzfilename, "w")
 pdbang = open(pdbangfilename, "w")
 
