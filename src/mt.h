@@ -26,8 +26,8 @@
 #define LARGENUMBER 999999
 
 #define PF_NUMBER 13
-#define ANG_THRES 0.5f
-#define R_THRES (r_mon * 3.5)
+#define ANG_THRES 1.6f
+#define R_THRES (r_mon * 8)
 
 #define Turn 13 //Monomers per turn(2PI) 
 

@@ -45,8 +45,12 @@ endif()
 
 # Find CUDA
 if (NOT DEFINED CUDA_ARCH)
-  set(CUDA_ARCH sm_20)
+  set(CUDA_ARCH sm_35)
 endif(NOT DEFINED CUDA_ARCH)
+
+if (NOT DEFINED CUDA_SEPARABLE_COMPILATION)
+  set(CUDA_SEPARABLE_COMPILATION ON)
+endif(NOT DEFINED CUDA_SEPARABLE_COMPILATION)
 
 set(CUDA_ARCH "${CUDA_ARCH}" CACHE STRING "GPU Architecture" FORCE)
 find_package(CUDA QUIET REQUIRED)
@@ -80,19 +84,19 @@ endif()
 set(SOURCES
 		src/dcdio.cpp
 		src/xyzio.cpp
-    src/globals.cpp
+    		src/globals.cpp
 		src/main.cpp
 		src/pdbio.cpp
 		src/configreader.cpp
 		src/wrapper.cpp
 		src/timer.cpp
 		src/parameters.cpp
-    src/compute_cuda.cu
-    src/updater.cpp
-    src/preparator.cpp
-    src/bdhitea.cu
-    src/bdhitea_kernel.cu
-    src/HybridTaus.cu
+    		src/compute_cuda.cu
+    		src/updater.cpp
+    		src/preparator.cpp
+    		src/bdhitea.cu
+    		src/bdhitea_kernel.cu
+    		src/HybridTaus.cu
 
 )
 
