@@ -498,17 +498,17 @@ __global__ void compute_kernel(const Coord* d_r, Coord* d_f){
 
 				if (ri.z < c_par.rep_leftborder){ 
 
-		        	fi.z += c_par.rep_eps * fabs(ri.z - c_par.rep_leftborder);
+		        	fi.z += c_par.rep_eps; //* fabs(ri.z - c_par.rep_leftborder);
 		    	} else if (ri.z > c_par.zs[traj] + c_par.rep_leftborder) {
 
-		    	fi.z += - c_par.rep_eps * fabs(ri.z - (c_par.zs[traj] + c_par.rep_leftborder) );
+		    	fi.z += - c_par.rep_eps; //* fabs(ri.z - (c_par.zs[traj] + c_par.rep_leftborder) );
 		   		}
 
 			    real rad2 = ri.x * ri.x + ri.y * ri.y;
 
 			    if (rad2 > c_par.rep_r * c_par.rep_r){
 
-			        real coeff = -c_par.rep_eps * (sqrt(rad2) - c_par.rep_r);
+			        real coeff = -c_par.rep_eps;// * (sqrt(rad2) - c_par.rep_r);
 			        fi.x += ri.x * coeff ;
 			        fi.y += ri.y * coeff;
 			    }

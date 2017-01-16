@@ -70,11 +70,11 @@ for chain in chains:
 			if mon%2 == 0:
 					pdbat1.name = 'CA'
 					pdbat2.name = 'CA'
-					pdbat1.z  = 400.0
+					pdbat1.z  = 600.0
 			else:
 					pdbat1.name = 'CB'
 					pdbat2.name = 'CB'
-					pdbat1.z  = 404.0
+					pdbat1.z  = 604.0
 			pdbxyz.write("%s\n" % str(pdbat1))
 			pdbang.write("%s\n" % str(pdbat2))
 
