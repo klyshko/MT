@@ -164,7 +164,7 @@ void mt_length(long long int step, int* mt_len){
         for (int i = traj * par.Ntot; i < (traj + 1) * par.Ntot; i++) {
 
             float rad = sqrt(r[i].x * r[i].x + r[i].y * r[i].y);
-            if ((rad < R_MT + R_THRES) && (rad > R_MT - R_THRES) && (cosf(r[i].theta) > cosf(ANG_THRES))) {
+            if ((rad < R_MT + R_THRES) && (rad > 1.0) && (cosf(r[i].theta) > cosf(ANG_THRES))) {
                
             // detect particles inside microtubule 
                 sum++;
