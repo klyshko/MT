@@ -1,6 +1,8 @@
 # MADDY - Microtubule Assembly and Disassembly DYnamics
 Scientific software package designed to perform Langevin Dynamics simulations of coarse-grained proteins (tubulins), implemented in C++ and GPU-accelerated with CUDA. In the software, I also utilized MPI to be able to run parallel simulations on the nodes with multiple graphics accelerators.
 
+![](ring.gif)
+
  Usage:
 
  1) Copy MT/ to your working folder
