@@ -53,7 +53,7 @@ if (NOT DEFINED CUDA_SEPARABLE_COMPILATION)
 endif(NOT DEFINED CUDA_SEPARABLE_COMPILATION)
 
 set(CUDA_ARCH "${CUDA_ARCH}" CACHE STRING "GPU Architecture" FORCE)
-find_package(CUDA QUIET REQUIRED)
+find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${CUDA_SDK_ROOT_DIR}/common/inc)
 
