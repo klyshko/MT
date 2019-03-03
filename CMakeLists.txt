@@ -26,7 +26,7 @@ if(${REGULARIZATION})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D REGULARIZATION")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D REGULARIZATION")
 endif()
-										
+
 if(${AVERAGE_LJ})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D AVERAGE_LJ")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D AVERAGE_LJ")
@@ -57,8 +57,8 @@ find_package(CUDA QUIET REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${CUDA_SDK_ROOT_DIR}/common/inc)
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch ${CUDA_ARCH} -use_fast_math)
-#set(CUDA_NVCC_FLAGS -arch ${CUDA_ARCH} --ptxas-options=-v ${CUDA_NVCC_FLAGS})
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch ${CUDA_ARCH} -use_fast_math -dc)
+#set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch ${CUDA_ARCH} --ptxas-options=-v )
 
 # Disable OpenMP
 set(ENABLE_OMP OFF)
