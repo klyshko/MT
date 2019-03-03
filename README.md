@@ -11,6 +11,10 @@ Scientific software package designed to perform Langevin Dynamics simulations of
 3. Compile - in MT/ folder: 
 
 ```bash
+# Here you can specify the compiler you want to use
+export CC=/usr/bin/gcc-6
+export CXX=/usr/bin/g++-6
+
 mkdir build/
 cd build/
 ccmake ..
@@ -18,11 +22,12 @@ ccmake ..
 make
 cd ../
 ```
-4. Configure config files in config/
+4. Configure config files in `template/`.
 5. Run by shell command:
  
 ```bash
-./mt config/config.conf > outputofterminal.out
+cd template/
+./build/mt config.conf
 ```
 
 6. Visualize dcd trajectories in VMD

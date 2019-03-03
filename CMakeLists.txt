@@ -59,8 +59,8 @@ find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${CUDA_SDK_ROOT_DIR}/common/inc)
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch ${CUDA_ARCH} -use_fast_math -dc)
-#set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch ${CUDA_ARCH} --ptxas-options=-v )
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -use_fast_math -dc)
+#set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch ${CUDA_ARCH} --ptxas-options=-v)
 
 # Disable OpenMP
 set(ENABLE_OMP OFF)
@@ -82,24 +82,22 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo." FORCE)
 endif()
 
-
 set(SOURCES
 		src/dcdio.cpp
 		src/xyzio.cpp
-    		src/globals.cpp
+    src/globals.cpp
 		src/main.cpp
 		src/pdbio.cpp
 		src/configreader.cpp
 		src/wrapper.cpp
 		src/timer.cpp
 		src/parameters.cpp
-    		src/compute_cuda.cu
-    		src/updater.cpp
-    		src/preparator.cpp
-    		src/bdhitea.cu
-    		src/bdhitea_kernel.cu
-    		src/HybridTaus.cu
-
+    src/compute_cuda.cu
+    src/updater.cpp
+    src/preparator.cpp
+    src/bdhitea.cu
+    src/bdhitea_kernel.cu
+    src/HybridTaus.cu
 )
 
 cuda_add_executable(mt ${SOURCES})
