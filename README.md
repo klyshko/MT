@@ -27,7 +27,7 @@ cd ../
  
 ```bash
 cd template/
-./build/mt config.conf
+../build/mt config.conf
 ```
 
 6. Visualize dcd trajectories in VMD
