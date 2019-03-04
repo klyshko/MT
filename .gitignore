@@ -4,3 +4,5 @@ cmake_install.cmake
 mt
 scripts/pdb.pyc
 intial/
+build/
+template/dcd/disass*

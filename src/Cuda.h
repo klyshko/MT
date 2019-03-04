@@ -120,10 +120,10 @@ inline dim3 cudaCheckThreadDim(const dim3& dim, const char* kernel_name, const c
 #define checkCUDAError(msg) cudaProcessErrorImpl(__FILE__, __LINE__, 0, msg)
 
 inline void cudaProcessErrorImpl(const char* file, int line, const char* kernel_name, const char* msg = "") {
-	//cudaThreadSynchronize();
+	//cudaDeviceSynchronize ();
 	cudaError_t error = cudaGetLastError();
 	if (error == cudaSuccess)
-		error = cudaThreadSynchronize();
+		error = cudaDeviceSynchronize ();
 	if (error == cudaSuccess)
 		error = cudaGetLastError();
 	if (error != cudaSuccess) {
