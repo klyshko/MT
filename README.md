@@ -31,4 +31,4 @@ cd template/
 ```
 
 6. Visualize dcd trajectories in VMD
-7. PROFIT!
+7. Publish a paper: [https://doi.org/10.1016/j.csbj.2022.01.028](https://doi.org/10.1016/j.csbj.2022.01.028)
